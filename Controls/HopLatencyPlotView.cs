@@ -22,9 +22,8 @@ public class HopLatencyPlotView : UserControl
         Content = _plot;
         _plot.Plot.XLabel("Hop", size: 10);
         _plot.Plot.YLabel("Latency (ms)", size: 10);
-        // _plot.Plot.Axes.Margins(bottom: 0, top: 0, left: 0, right: 0);
         _plot.Plot.Axes.Top.MinimumSize = 0;
-        _plot.Plot.Axes.Top.MaximumSize = 6;
+        _plot.Plot.Axes.Top.MaximumSize = 8;
         // Hops are integers — avoid fractional tick labels like "0.5".
         _plot.Plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.NumericAutomatic { IntegerTicksOnly = true };
 
