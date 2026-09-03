@@ -1,0 +1,45 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug MultiPing",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/bin/Debug/net10.0/win-x64/MultiPing.exe",
+      "args": [ "--mode", "multiping" ],
+      "cwd": "${workspaceFolder}/bin/Debug/net10.0/win-x64",
+      "stopAtEntry": false,
+      "console": "internalConsole",
+      "justMyCode": true,
+      "requireExactSource": false,
+      "symbolOptions": {
+        "searchPaths": [],
+        "searchMicrosoftSymbolServer": false
+      },
+      "env": {
+        "AVALONIA_DIAGNOSTICS": "1"
+      }
+    },
+    {
+      "name": "Debug PlotPing",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/bin/Debug/net10.0/win-x64/MultiPing.exe",
+      "args": [ "--mode", "plotping" ],
+      "cwd": "${workspaceFolder}/bin/Debug/net10.0/win-x64",
+      "stopAtEntry": false,
+      "console": "internalConsole",
+      "justMyCode": true,
+      "requireExactSource": false,
+      "symbolOptions": {
+        "searchPaths": [],
+        "searchMicrosoftSymbolServer": false
+      },
+      "env": {
+        "AVALONIA_DIAGNOSTICS": "1"
+      }
+    }
+  ]
+}
