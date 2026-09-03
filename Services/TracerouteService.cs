@@ -18,7 +18,12 @@ public readonly record struct HopResult(int Ttl, IPAddress? Address, double? Rtt
 /// </summary>
 public sealed class TracerouteService
 {
+    // Dial for how many hop probes may run at once. Set to 1 to serialize probes (e.g. to
+    // rule out router ICMP-rate-limiting/back-pressure as a cause of apparent packet loss).
+    private const int MaxConcurrentProbes = 1;
+
     private readonly PingService _ping;
+    private readonly SemaphoreSlim _concurrencyGate = new(MaxConcurrentProbes, MaxConcurrentProbes);
 
     public TracerouteService(PingService ping) => _ping = ping;
 
@@ -34,34 +39,11 @@ public sealed class TracerouteService
 
         var probeTasks = new List<Task>();
 
-        // Fire off all probe tasks concurrently.
+        // Fire off all probe tasks, gated by _concurrencyGate (see MaxConcurrentProbes).
         for (int ttl = 1; ttl <= maxHops; ttl++)
         {
             int currentTtl = ttl; // Capture for closure.
-            var task = _ping.ProbeAsync(host, currentTtl, timeoutMs, localCts.Token)
-                .ContinueWith(async probeTask =>
-                {
-                    try
-                    {
-                        ProbeResult r = await probeTask.ConfigureAwait(false);
-                        var result = new HopResult(currentTtl, r.Address, r.RttMs, r.Status, r.Reached);
-                        lock (resultDict) resultDict[currentTtl] = result;
-
-                        // If we've reached the destination, cancel all pending probes.
-                        if (r.Reached) localCts.Cancel();
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        // Expected when we reach the destination or the overall operation is cancelled.
-                        // Leave the pre-populated TimedOut entry.
-                    }
-                    catch
-                    {
-                        // Other exceptions (e.g., network errors) also count as dropouts.
-                        // Leave the pre-populated TimedOut entry.
-                    }
-                }, TaskScheduler.Default).Unwrap();
-
+            var task = RunGatedProbeAsync(host, currentTtl, timeoutMs, localCts, resultDict);
             probeTasks.Add(task);
         }
 
@@ -77,6 +59,34 @@ public sealed class TracerouteService
 
         // Return ALL results sorted by TTL (no trimming). Trimming is done at display layer.
         return resultDict.OrderBy(kv => kv.Key).Select(kv => kv.Value).ToList();
+    }
+
+    private async Task RunGatedProbeAsync(string host, int ttl, int timeoutMs, CancellationTokenSource localCts, Dictionary<int, HopResult> resultDict)
+    {
+        await _concurrencyGate.WaitAsync(localCts.Token).ConfigureAwait(false);
+        try
+        {
+            ProbeResult r = await _ping.ProbeAsync(host, ttl, timeoutMs, localCts.Token).ConfigureAwait(false);
+            var result = new HopResult(ttl, r.Address, r.RttMs, r.Status, r.Reached);
+            lock (resultDict) resultDict[ttl] = result;
+
+            // If we've reached the destination, cancel all pending probes.
+            if (r.Reached) localCts.Cancel();
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when we reach the destination or the overall operation is cancelled.
+            // Leave the pre-populated TimedOut entry.
+        }
+        catch
+        {
+            // Other exceptions (e.g., network errors) also count as dropouts.
+            // Leave the pre-populated TimedOut entry.
+        }
+        finally
+        {
+            _concurrencyGate.Release();
+        }
     }
 
     /// <summary>Trims results for display: up to first destination, or last responding + one dropout, or first one only.</summary>
