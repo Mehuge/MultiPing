@@ -61,6 +61,18 @@ public abstract partial class MonitorViewModelBase : ObservableObject
 
     private void OnRowsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        // Reset (e.g. Rows.Clear()) reports no OldItems/NewItems, so drop any tracked rows that are
+        // no longer present to avoid stale PlottedRows entries and duplicate PropertyChanged subscriptions.
+        if (e.Action == NotifyCollectionChangedAction.Reset)
+        {
+            foreach (var r in PlottedRows.Where(r => !Rows.Contains(r)).ToList())
+            {
+                r.PropertyChanged -= OnRowPropertyChanged;
+                PlottedRows.Remove(r);
+            }
+            return;
+        }
+
         if (e.OldItems is not null)
             foreach (ProbeRowViewModel r in e.OldItems)
             {
@@ -71,8 +83,11 @@ public abstract partial class MonitorViewModelBase : ObservableObject
         if (e.NewItems is not null)
             foreach (ProbeRowViewModel r in e.NewItems)
             {
+                // Guard against double-subscription/duplicate insertion if the same row instance
+                // is re-added (e.g. re-added after a Clear()).
+                r.PropertyChanged -= OnRowPropertyChanged;
                 r.PropertyChanged += OnRowPropertyChanged;
-                if (r.PlotEnabled) InsertPlotted(r);
+                if (r.PlotEnabled && !PlottedRows.Contains(r)) InsertPlotted(r);
             }
     }
 
