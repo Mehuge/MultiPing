@@ -1,0 +1,56 @@
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio cache/options
+.vs/
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# Rider
+.idea/
+*.sln.iml
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Local history for Visual Studio Code
+.history/
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+NuGet/
+.nuget
+nuget.exe
+
+# dotnet user secrets
+.user
+secrets.json
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Avalonia-specific
+bin/
+obj/

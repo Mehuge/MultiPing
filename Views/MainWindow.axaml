@@ -1,0 +1,34 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:MultiPing.ViewModels"
+        x:Class="MultiPing.Views.MainWindow"
+        x:DataType="vm:MonitorViewModelBase"
+        Width="1200" Height="800"
+        Title="{Binding WindowTitle}">
+
+  <DockPanel>
+    <Menu DockPanel.Dock="Top">
+      <MenuItem Header="_File">
+        <MenuItem Header="New _PlotPing Window" Command="{Binding NewPlotPingWindowCommand}" />
+        <MenuItem Header="New _MultiPing Window" Command="{Binding NewMultiPingWindowCommand}" />
+        <Separator />
+        <MenuItem Header="Open _Log Folder" Command="{Binding OpenLogFolderCommand}" />
+        <Separator />
+        <MenuItem Header="E_xit" Click="OnExitClick" />
+      </MenuItem>
+      <MenuItem Header="_Trace">
+        <MenuItem Header="_Start" Command="{Binding StartRunCommand}" />
+        <MenuItem Header="Sto_p" Command="{Binding StopRunCommand}" />
+      </MenuItem>
+      <MenuItem Header="_Options">
+        <MenuItem Header="Log all traces by default">
+          <MenuItem.Icon>
+            <CheckBox IsChecked="{Binding LogByDefault}" BorderThickness="0" />
+          </MenuItem.Icon>
+        </MenuItem>
+      </MenuItem>
+    </Menu>
+
+    <ContentControl Content="{Binding}" />
+  </DockPanel>
+</Window>
