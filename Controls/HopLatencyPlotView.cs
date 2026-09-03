@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using MultiPing.ViewModels;
 using ScottPlot;
 using ScottPlot.Avalonia;
+using ScottPlot.AxisPanels;
 
 namespace MultiPing.Controls;
 
@@ -19,14 +20,18 @@ public class HopLatencyPlotView : UserControl
     public HopLatencyPlotView()
     {
         Content = _plot;
-        _plot.Plot.XLabel("Hop");
-        _plot.Plot.YLabel("Latency (ms)");
+        _plot.Plot.XLabel("Hop", size: 10);
+        _plot.Plot.YLabel("Latency (ms)", size: 10);
+        // _plot.Plot.Axes.Margins(bottom: 0, top: 0, left: 0, right: 0);
+        _plot.Plot.Axes.Top.MinimumSize = 0;
+        _plot.Plot.Axes.Top.MaximumSize = 6;
         // Hops are integers — avoid fractional tick labels like "0.5".
         _plot.Plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.NumericAutomatic { IntegerTicksOnly = true };
 
         // Transparent figure with a white data area so the plot stands out from its container.
         _plot.Plot.FigureBackground.Color = ScottPlot.Colors.Transparent;
         _plot.Plot.DataBackground.Color = ScottPlot.Colors.White;
+        _plot.Refresh();
     }
 
     public void Update(IReadOnlyList<ProbeRowViewModel> rows)
@@ -99,7 +104,6 @@ public class HopLatencyPlotView : UserControl
                 }
             }
 
-            plot.Title("Current Traceroute");
             plot.Axes.SetLimits(0.5, n + 0.5, 0, yMax * 1.15);
             plot.Legend.IsVisible = false;
         }

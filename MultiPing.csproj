@@ -10,6 +10,12 @@
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <AssemblyName>MultiPing</AssemblyName>
     <RootNamespace>MultiPing</RootNamespace>
+
+    <!-- These only take effect for `dotnet publish` (a RuntimeIdentifier is required), not plain `dotnet build`. -->
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
   </PropertyGroup>
 
   <ItemGroup>

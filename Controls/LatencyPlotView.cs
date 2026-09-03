@@ -57,6 +57,10 @@ public class LatencyPlotView : UserControl
         plot.Axes.Bottom.TickLabelStyle.FontSize = 9;
         plot.Axes.Left.TickLabelStyle.FontSize = 9;
 
+        plot.Axes.Margins(bottom: 0, top: 0, left: 0, right: 0);
+        plot.Axes.Top.MinimumSize = 0;
+        plot.Axes.Top.MaximumSize = 6;
+
         // Transparent figure so the off-white panel shows through; white data area so the graph stands out.
         plot.FigureBackground.Color = ScottPlot.Colors.Transparent;
         plot.DataBackground.Color = ScottPlot.Colors.White;

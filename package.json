@@ -4,11 +4,12 @@
   "description": "MultiPing - Avalonia desktop app for traceroute and multi-IP latency monitoring",
   "scripts": {
     "build:debug": "dotnet build -c Debug --no-restore",
-    "build:release": "dotnet build -c Release --no-restore",
+    "build:release": "dotnet publish MultiPing.csproj -c Release -r win-x64 --no-restore -o bin/Release/net10.0/publish",
     "launch:debug": "start bin\\Debug\\net10.0\\MultiPing.exe --mode plotping",
-    "launch:release": "start bin/Release/net10.0/MultiPing.exe --mode plotping",
+    "launch:release": "start bin/Release/net10.0/publish/MultiPing.exe --mode plotping",
     "launch:multiping": "start bin/Debug/net10.0/MultiPing.exe --mode multiping",
     "dev": "npm run build:debug && npm run launch:debug",
+    "dev:multiping": "npm run build:debug && npm run launch:multiping",
     "clean": "dotnet clean"
   },
   "keywords": [

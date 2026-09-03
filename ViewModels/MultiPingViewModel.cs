@@ -47,13 +47,17 @@ public partial class MultiPingViewModel : MonitorViewModelBase
         if (host.Length == 0) return;
         Rows.Add(CreateRow(host));
         NewTargetInput = string.Empty;
+        SaveSettings();
     }
 
     [RelayCommand]
     private void RemoveSelected()
     {
         if (SelectedRow is { } row)
+        {
             Rows.Remove(row);
+            SaveSettings();
+        }
     }
 
     protected override async Task RunRoundAsync(CancellationToken ct)
