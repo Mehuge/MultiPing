@@ -13,6 +13,16 @@ public partial class MainWindow : Window
 
     private void OnExitClick(object? sender, RoutedEventArgs e) => Close();
 
+    private async void OnOptionsClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MonitorViewModelBase vm)
+        {
+            var optionsVm = new OptionsViewModel(vm.Settings, vm.ConfigSvc, vm);
+            var dialog = new OptionsDialog { DataContext = optionsVm };
+            await dialog.ShowDialog(this);
+        }
+    }
+
     protected override void OnClosing(WindowClosingEventArgs e)
     {
         if (DataContext is MonitorViewModelBase vm)

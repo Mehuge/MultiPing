@@ -23,11 +23,11 @@ namespace MultiPing.ViewModels;
 /// </summary>
 public abstract partial class MonitorViewModelBase : ObservableObject
 {
-    protected readonly ConfigService ConfigSvc;
-    protected readonly PingService Ping;
-    protected readonly TracerouteService Trace;
-    protected readonly LogService Log;
-    protected readonly AppConfig Settings;
+    public ConfigService ConfigSvc { get; }
+    public PingService Ping { get; }
+    public TracerouteService Trace { get; }
+    public LogService Log { get; }
+    public AppConfig Settings { get; }
 
     private CancellationTokenSource? _cts;
 

@@ -1,0 +1,64 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:MultiPing.ViewModels"
+        x:Class="MultiPing.Views.OptionsDialog"
+        x:DataType="vm:OptionsViewModel"
+        Title="Options"
+        Icon="/Assets/icon.ico"
+        Width="480" Height="360"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+
+  <Grid RowDefinitions="*,Auto" Margin="14">
+    <TabControl Grid.Row="0">
+
+      <!-- General Tab -->
+      <TabItem Header="General">
+        <StackPanel Spacing="12" Margin="8,12">
+          <Grid ColumnDefinitions="160,*" RowDefinitions="Auto,Auto,Auto">
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Ping Interval (s):" VerticalAlignment="Center" />
+            <NumericUpDown Grid.Row="0" Grid.Column="1" Value="{Binding PingIntervalSeconds}" Minimum="1" Maximum="300" Increment="1" Width="140" HorizontalAlignment="Left" />
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="Plot Window (min):" VerticalAlignment="Center" Margin="0,10,0,0" />
+            <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding SampleWindowMinutes}" Minimum="1" Maximum="1440" Increment="5" Width="140" HorizontalAlignment="Left" Margin="0,10,0,0" />
+
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="Probe Timeout (ms):" VerticalAlignment="Center" Margin="0,10,0,0" />
+            <NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding PingTimeoutMs}" Minimum="100" Maximum="10000" Increment="500" Width="140" HorizontalAlignment="Left" Margin="0,10,0,0" />
+          </Grid>
+        </StackPanel>
+      </TabItem>
+
+      <!-- Traceroute Tab -->
+      <TabItem Header="Traceroute">
+        <StackPanel Spacing="12" Margin="8,12">
+          <Grid ColumnDefinitions="160,*" RowDefinitions="Auto">
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Max Hops (TTL):" VerticalAlignment="Center" />
+            <NumericUpDown Grid.Row="0" Grid.Column="1" Value="{Binding MaxHops}" Minimum="1" Maximum="128" Increment="1" Width="140" HorizontalAlignment="Left" />
+          </Grid>
+        </StackPanel>
+      </TabItem>
+
+      <!-- Logging Tab -->
+      <TabItem Header="Logging">
+        <StackPanel Spacing="12" Margin="8,12">
+          <CheckBox Content="Log all traces to disk by default" IsChecked="{Binding LogByDefault}" />
+
+          <TextBlock Text="Custom Log Directory:" Margin="0,8,0,0" />
+          <Grid ColumnDefinitions="*,Auto,Auto">
+            <TextBox Grid.Column="0" Text="{Binding LogDirectory}" PlaceholderText="(Default: AppData\MultiPing\logs)" Margin="0,0,6,0" />
+            <Button Grid.Column="1" Content="Browse..." Command="{Binding BrowseLogDirectoryCommand}" Margin="0,0,4,0" />
+            <Button Grid.Column="2" Content="Default" Command="{Binding ResetLogDirectoryCommand}" ToolTip.Tip="Reset to default log folder" />
+          </Grid>
+        </StackPanel>
+      </TabItem>
+
+    </TabControl>
+
+    <!-- Dialog Actions (OK / Cancel / Apply) -->
+    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
+      <Button Content="OK" Command="{Binding OkCommand}" Width="75" IsDefault="True" HorizontalContentAlignment="Center" />
+      <Button Content="Cancel" Command="{Binding CancelCommand}" Width="75" IsCancel="True" HorizontalContentAlignment="Center" />
+      <Button Content="Apply" Command="{Binding ApplyCommand}" Width="75" HorizontalContentAlignment="Center" />
+    </StackPanel>
+  </Grid>
+</Window>

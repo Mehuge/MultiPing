@@ -22,11 +22,7 @@
         <MenuItem Header="Sto_p" Command="{Binding StopRunCommand}" />
       </MenuItem>
       <MenuItem Header="_Options">
-        <MenuItem Header="Log all traces by default">
-          <MenuItem.Icon>
-            <CheckBox IsChecked="{Binding LogByDefault}" BorderThickness="0" />
-          </MenuItem.Icon>
-        </MenuItem>
+        <MenuItem Header="_Options..." Click="OnOptionsClick" />
       </MenuItem>
     </Menu>
 

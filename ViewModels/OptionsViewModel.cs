@@ -1,0 +1,96 @@
+using System;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using MultiPing.Models;
+using MultiPing.Services;
+
+namespace MultiPing.ViewModels;
+
+/// <summary>
+/// ViewModel for the Options dialog. Exposes editable application settings and coordinates
+/// persistence and updating the active window's state upon save/apply.
+/// </summary>
+public partial class OptionsViewModel : ObservableObject
+{
+    private readonly AppConfig _config;
+    private readonly ConfigService _configSvc;
+    private readonly MonitorViewModelBase? _activeMonitor;
+
+    [ObservableProperty] private int _pingIntervalSeconds;
+    [ObservableProperty] private int _pingTimeoutMs;
+    [ObservableProperty] private int _maxHops;
+    [ObservableProperty] private double _sampleWindowMinutes;
+    [ObservableProperty] private bool _logByDefault;
+    [ObservableProperty] private string _logDirectory = string.Empty;
+
+    public Func<Task<string?>>? PickFolderHandler { get; set; }
+    public Action? CloseAction { get; set; }
+
+    public OptionsViewModel(AppConfig config, ConfigService configSvc, MonitorViewModelBase? activeMonitor = null)
+    {
+        _config = config;
+        _configSvc = configSvc;
+        _activeMonitor = activeMonitor;
+
+        // Populate with current configuration values
+        _pingIntervalSeconds = Math.Max(1, config.PingIntervalMs / 1000);
+        _pingTimeoutMs = config.PingTimeoutMs;
+        _maxHops = config.MaxHops;
+        _sampleWindowMinutes = config.SampleWindowMinutes;
+        _logByDefault = config.LogByDefault;
+        _logDirectory = config.LogDirectory ?? string.Empty;
+    }
+
+    [RelayCommand]
+    private async Task BrowseLogDirectoryAsync()
+    {
+        if (PickFolderHandler is not null)
+        {
+            string? folder = await PickFolderHandler();
+            if (!string.IsNullOrEmpty(folder))
+            {
+                LogDirectory = folder;
+            }
+        }
+    }
+
+    [RelayCommand]
+    private void ResetLogDirectory()
+    {
+        LogDirectory = string.Empty;
+    }
+
+    [RelayCommand]
+    public void Apply()
+    {
+        _config.PingIntervalMs = Math.Max(1, PingIntervalSeconds) * 1000;
+        _config.PingTimeoutMs = Math.Max(100, PingTimeoutMs);
+        _config.MaxHops = Math.Clamp(MaxHops, 1, 128);
+        _config.SampleWindowMinutes = Math.Max(1, SampleWindowMinutes);
+        _config.LogByDefault = LogByDefault;
+        _config.LogDirectory = LogDirectory.Trim();
+
+        _configSvc.Save(_config);
+
+        if (_activeMonitor is not null)
+        {
+            _activeMonitor.PingIntervalMs = _config.PingIntervalMs;
+            _activeMonitor.SampleWindowMinutes = _config.SampleWindowMinutes;
+            _activeMonitor.LogByDefault = _config.LogByDefault;
+        }
+    }
+
+    [RelayCommand]
+    public void Ok()
+    {
+        Apply();
+        CloseAction?.Invoke();
+    }
+
+    [RelayCommand]
+    public void Cancel()
+    {
+        CloseAction?.Invoke();
+    }
+}
