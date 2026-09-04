@@ -47,11 +47,37 @@ public abstract partial class MonitorViewModelBase : ObservableObject
         _logByDefault = settings.LogByDefault;
         _pingIntervalMs = settings.PingIntervalMs;
 
+        foreach (string host in settings.RecentHosts)
+            RecentHosts.Add(host);
+
         Rows.CollectionChanged += OnRowsCollectionChanged;
     }
 
     public abstract AppMode Mode { get; }
     public abstract string WindowTitle { get; }
+
+    private const int MaxRecentHosts = 15;
+
+    /// <summary>Most-recently-used hosts/IPs, newest first, shared by both modes' target boxes.</summary>
+    public ObservableCollection<string> RecentHosts { get; } = new();
+
+    /// <summary>Records a host as recently used, moving it to the front and persisting the list.</summary>
+    protected void RememberHost(string host)
+    {
+        host = host.Trim();
+        if (host.Length == 0) return;
+
+        for (int i = RecentHosts.Count - 1; i >= 0; i--)
+            if (string.Equals(RecentHosts[i], host, StringComparison.OrdinalIgnoreCase))
+                RecentHosts.RemoveAt(i);
+
+        RecentHosts.Insert(0, host);
+        while (RecentHosts.Count > MaxRecentHosts)
+            RecentHosts.RemoveAt(RecentHosts.Count - 1);
+
+        Settings.RecentHosts = RecentHosts.ToList();
+        ConfigSvc.Save(Settings);
+    }
 
     public ObservableCollection<ProbeRowViewModel> Rows { get; } = new();
 

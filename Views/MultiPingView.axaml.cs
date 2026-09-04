@@ -1,5 +1,8 @@
 using System.Linq;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using MultiPing.Controls;
 using MultiPing.ViewModels;
@@ -31,5 +34,41 @@ public partial class MultiPingView : UserControl
     {
         if (_vm is not null)
             _snapshot?.Update(_vm.SelectedTraceHops.ToList());
+    }
+
+    private void OnTargetKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && _vm is not null)
+        {
+            _vm.AddTargetCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Down)
+        {
+            ShowMruFlyout();
+            e.Handled = true;
+        }
+    }
+
+    private void OnMruButtonClick(object? sender, RoutedEventArgs e) => ShowMruFlyout();
+
+    private void ShowMruFlyout()
+    {
+        if (this.FindControl<TextBox>("TargetBox") is { } box)
+            FlyoutBase.ShowAttachedFlyout(box);
+    }
+
+    private void OnMruSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (sender is not ListBox { SelectedItem: string host } listBox || _vm is null) return;
+        _vm.NewTargetInput = host;
+        listBox.SelectedItem = null;
+        if (this.FindControl<TextBox>("TargetBox") is { } box)
+        {
+            FlyoutBase.GetAttachedFlyout(box)?.Hide();
+            box.Focus();
+        }
     }
 }

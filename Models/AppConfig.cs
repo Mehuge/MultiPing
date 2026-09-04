@@ -31,4 +31,7 @@ public sealed class AppConfig
 
     /// <summary>Directory where log files are written. Empty means the default AppData logs folder.</summary>
     public string LogDirectory { get; set; } = string.Empty;
+
+    /// <summary>Most-recently-used hosts/IPs entered in either mode's target box, newest first.</summary>
+    public List<string> RecentHosts { get; set; } = new();
 }

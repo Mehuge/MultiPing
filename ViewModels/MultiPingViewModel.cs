@@ -48,6 +48,7 @@ public partial class MultiPingViewModel : MonitorViewModelBase
         string host = NewTargetInput.Trim();
         if (host.Length == 0) return;
         Rows.Add(CreateRow(host));
+        RememberHost(host);
         NewTargetInput = string.Empty;
         SaveSettings();
     }

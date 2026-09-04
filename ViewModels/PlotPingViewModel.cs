@@ -26,6 +26,8 @@ public partial class PlotPingViewModel : MonitorViewModelBase
     public override AppMode Mode => AppMode.PlotPing;
     public override string WindowTitle => $"MultiPing — PlotPing (traceroute) : {Target}";
 
+    protected override void OnStarting() => RememberHost(Target);
+
     protected override async Task RunRoundAsync(CancellationToken ct)
     {
         string target = Target.Trim();
