@@ -21,6 +21,8 @@ public partial class MultiPingViewModel : MonitorViewModelBase
 
     private int _roundCounter;
     private int _nextIndex = 1;
+    private CancellationTokenSource? _traceCts;
+    private bool _traceInProgress;
 
     [ObservableProperty] private string _newTargetInput = string.Empty;
 
@@ -76,10 +78,43 @@ public partial class MultiPingViewModel : MonitorViewModelBase
             rows[i].AddSample(new PingSample(DateTime.UtcNow, r.RttMs));
         }
 
-        // Periodically refresh the traceroute for the selected destination.
+        // Periodically refresh the traceroute for the selected destination. Fired without awaiting so a slow
+        // or unresponsive host being traced doesn't hold up the ping round's timing.
         if (SelectedRow is { } sel && _roundCounter % SelectedTraceEveryRounds == 0)
-            await UpdateSelectedTraceAsync(sel.Host, ct);
+            StartSelectedTraceUpdate(sel.Host);
         _roundCounter++;
+    }
+
+    protected override void OnStopping()
+    {
+        _traceCts?.Cancel();
+    }
+
+    private void StartSelectedTraceUpdate(string host)
+    {
+        if (_traceInProgress) return;
+        _traceCts?.Cancel();
+        _traceCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _traceCts = cts;
+        _traceInProgress = true;
+        _ = RunSelectedTraceAsync(host, cts.Token);
+    }
+
+    private async Task RunSelectedTraceAsync(string host, CancellationToken ct)
+    {
+        try
+        {
+            await UpdateSelectedTraceAsync(host, ct);
+        }
+        catch (OperationCanceledException)
+        {
+            // Superseded by a newer trace or the run was stopped.
+        }
+        finally
+        {
+            _traceInProgress = false;
+        }
     }
 
     private async Task UpdateSelectedTraceAsync(string host, CancellationToken ct)

@@ -194,10 +194,14 @@ public abstract partial class MonitorViewModelBase : ObservableObject
         IsRunning = false;
         StatusText = "Stopped";
         Log.Close();
+        OnStopping();
     }
 
     /// <summary>Hook for derived classes to (re)build their rows before a run begins.</summary>
     protected virtual void OnStarting() { }
+
+    /// <summary>Hook for derived classes to cancel any background work still in flight after a run stops.</summary>
+    protected virtual void OnStopping() { }
 
     /// <summary>Performs one probe round, updating rows/series. Must run on the UI thread.</summary>
     protected abstract Task RunRoundAsync(CancellationToken ct);
