@@ -26,26 +26,34 @@ public partial class PlotPingViewModel : MonitorViewModelBase
     public override AppMode Mode => AppMode.PlotPing;
     public override string WindowTitle => $"MultiPing — PlotPing (traceroute) : {Target}";
 
-    protected override void OnStarting() => RememberHost(Target);
+    partial void OnTargetChanged(string value)
+    {
+        _allRowsByTtl.Clear();
+        Rows.Clear();
+        Trace.ResetState(value.Trim());
+    }
+
+    protected override void OnStarting()
+    {
+        _allRowsByTtl.Clear();
+        Rows.Clear();
+        Trace.ResetState(Target.Trim());
+        RememberHost(Target);
+    }
 
     protected override async Task RunRoundAsync(CancellationToken ct)
     {
         string target = Target.Trim();
         if (string.IsNullOrEmpty(target)) return;
 
-        // Get ALL results (all 30 hops, not trimmed)
+        // Run traceroute round (adaptive TTL with lookahead)
         var allHops = await Trace.RunRoundAsync(target, Settings.MaxHops, Settings.PingTimeoutMs, ct);
 
-        // Ensure all 30 rows exist and add samples to ALL (for loss calculation)
-        for (int ttl = 1; ttl <= Settings.MaxHops; ttl++)
+        // Add samples only for hops that were probed this round
+        foreach (var hop in allHops)
         {
-            ProbeRowViewModel row = GetOrCreateRow(ttl);
-
-            var hop = allHops.FirstOrDefault(h => h.Ttl == ttl);
-            if (hop.Ttl != 0) // HopResult was found
-            {
-                row.AddSample(new PingSample(DateTime.UtcNow, hop.RttMs));
-            }
+            ProbeRowViewModel row = GetOrCreateRow(hop.Ttl);
+            row.AddSample(new PingSample(DateTime.UtcNow, hop.RttMs));
         }
 
         // Trim for display: rebuild Rows collection with only relevant hops
