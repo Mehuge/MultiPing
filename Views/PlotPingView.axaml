@@ -33,7 +33,13 @@
                 CanUserSortColumns="False"
                 GridLinesVisibility="None">
         <DataGrid.Columns>
-          <DataGridTextColumn Header="Hop" Binding="{Binding Index}" Width="52" />
+          <DataGridTemplateColumn Header="Hop" Width="52">
+            <DataTemplate x:DataType="vm:ProbeRowViewModel">
+              <Border Background="{Binding RttBackground}">
+                <TextBlock Text="{Binding Index}" VerticalAlignment="Center" Margin="4,0" />
+              </Border>
+            </DataTemplate>
+          </DataGridTemplateColumn>
           <DataGridTextColumn Header="IP Address" Binding="{Binding IpAddress}" Width="160" />
           <DataGridTemplateColumn Header="RTT" Width="70">
             <DataGridTemplateColumn.HeaderTemplate>

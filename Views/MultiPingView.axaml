@@ -37,7 +37,13 @@
                 CanUserResizeColumns="True"
                 GridLinesVisibility="None">
         <DataGrid.Columns>
-          <DataGridTextColumn Header="#" Binding="{Binding Index}" Width="80" />
+          <DataGridTemplateColumn Header="#" Width="80">
+            <DataTemplate x:DataType="vm:ProbeRowViewModel">
+              <Border Background="{Binding RttBackground}">
+                <TextBlock Text="{Binding Index}" VerticalAlignment="Center" Margin="4,0" />
+              </Border>
+            </DataTemplate>
+          </DataGridTemplateColumn>
           <DataGridTextColumn Header="Target" Binding="{Binding Host}" Width="150" />
           <DataGridTextColumn Header="IP Address" Binding="{Binding IpAddress}" Width="150" />
           <DataGridTemplateColumn Header="RTT" Width="70">

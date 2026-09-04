@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MultiPing.Models;
@@ -43,6 +44,14 @@ public partial class ProbeRowViewModel : ObservableObject
     [ObservableProperty] private string _avgText = "-";
     [ObservableProperty] private string _plText = "0.0";
 
+    /// <summary>Background for the hop/# cell, colour-coded by the most recent RTT.</summary>
+    [ObservableProperty] private IBrush _rttBackground = Brushes.Transparent;
+
+    private static readonly IBrush LowRttBrush = new SolidColorBrush(Color.Parse("#90EE90"));    // light green: < 50ms
+    private static readonly IBrush MidRttBrush = new SolidColorBrush(Color.Parse("#FFA500"));    // orange: < 100ms
+    private static readonly IBrush HighRttBrush = new SolidColorBrush(Color.Parse("#FFB6C1"));   // pink: >= 100ms
+
+
     /// <summary>Toggles whether this row's time-series plot is shown along the bottom.</summary>
     [RelayCommand]
     private void TogglePlot() => PlotEnabled = !PlotEnabled;
@@ -63,6 +72,13 @@ public partial class ProbeRowViewModel : ObservableObject
         MaxText = Num(s.Max);
         AvgText = Num(s.Avg);
         PlText = s.PacketLossPercent.ToString("0", CultureInfo.InvariantCulture);
+        RttBackground = s.Last switch
+        {
+            null => Brushes.White,
+            < 50 => LowRttBrush,
+            < 100 => MidRttBrush,
+            _ => HighRttBrush,
+        };
     }
 
     public LogEntry ToLogEntry() => new(Index, IpAddress, Series.Snapshot());
