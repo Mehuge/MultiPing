@@ -4,10 +4,12 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MultiPing.Models;
@@ -138,6 +140,24 @@ public abstract partial class MonitorViewModelBase : ObservableObject
     [ObservableProperty] private string _statusText = "Idle";
     [ObservableProperty] private ProbeRowViewModel? _selectedRow;
 
+    /// <summary>True while a probe round is actually in flight (as opposed to waiting for the next tick).</summary>
+    [ObservableProperty] private bool _isProbing;
+
+    /// <summary>Compact label next to the interval setting: "Ping" while a round is in flight, else a countdown like "3s".</summary>
+    [ObservableProperty] private string _probeIndicatorText = "";
+
+    /// <summary>Background for the probe indicator pill: green while probing, grey while counting down.</summary>
+    [ObservableProperty] private IBrush _probeIndicatorBrush = IdleProbeBrush;
+
+    private static readonly IBrush ProbingBrush = new SolidColorBrush(Color.Parse("#2ECC71"));
+    private static readonly IBrush IdleProbeBrush = new SolidColorBrush(Color.Parse("#B0B0B0"));
+
+    partial void OnIsProbingChanged(bool value)
+    {
+        ProbeIndicatorBrush = value ? ProbingBrush : IdleProbeBrush;
+        if (value) ProbeIndicatorText = "Ping";
+    }
+
     /// <summary>Label for the single run toggle button.</summary>
     public string RunButtonText => IsRunning ? "Stop" : "Start";
 
@@ -194,6 +214,8 @@ public abstract partial class MonitorViewModelBase : ObservableObject
         IsRunning = false;
         StatusText = "Stopped";
         Log.Close();
+        IsProbing = false;
+        ProbeIndicatorText = "";
         OnStopping();
     }
 
@@ -206,6 +228,8 @@ public abstract partial class MonitorViewModelBase : ObservableObject
     /// <summary>Performs one probe round, updating rows/series. Must run on the UI thread.</summary>
     protected abstract Task RunRoundAsync(CancellationToken ct);
 
+    private const int ProgressTickMs = 200;
+
     private async Task RunLoopAsync(CancellationToken ct)
     {
         DateTime nextFireTime = DateTime.UtcNow.AddMilliseconds(Settings.PingIntervalMs);
@@ -213,13 +237,17 @@ public abstract partial class MonitorViewModelBase : ObservableObject
 
         while (!ct.IsCancellationRequested)
         {
-            // Wait until next scheduled fire time
-            long delayMs = (long)(nextFireTime - DateTime.UtcNow).TotalMilliseconds;
-            if (delayMs > 0)
+            // Wait until next scheduled fire time, ticking the countdown text for the indicator pill.
+            while (!ct.IsCancellationRequested)
             {
+                double remainingMs = (nextFireTime - DateTime.UtcNow).TotalMilliseconds;
+                if (remainingMs <= 0) break;
+
+                ProbeIndicatorText = Math.Ceiling(remainingMs / 1000.0).ToString(CultureInfo.InvariantCulture) + "s";
+
                 try
                 {
-                    await Task.Delay((int)delayMs, ct);
+                    await Task.Delay((int)Math.Min(remainingMs, ProgressTickMs), ct);
                 }
                 catch (OperationCanceledException)
                 {
@@ -233,6 +261,7 @@ public abstract partial class MonitorViewModelBase : ObservableObject
             currentRoundCts?.Cancel();
             currentRoundCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
 
+            IsProbing = true;
             try
             {
                 await RunRoundAsync(currentRoundCts.Token);
@@ -247,6 +276,7 @@ public abstract partial class MonitorViewModelBase : ObservableObject
             }
             finally
             {
+                IsProbing = false;
                 currentRoundCts?.Dispose();
                 currentRoundCts = null;
             }
