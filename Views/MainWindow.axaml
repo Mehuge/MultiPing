@@ -7,7 +7,7 @@
         Title="{Binding WindowTitle}">
 
   <DockPanel>
-    <Menu DockPanel.Dock="Top">
+    <Menu DockPanel.Dock="Top" FontSize="14" Height="24">
       <MenuItem Header="_File">
         <MenuItem Header="New _PlotPing Window" Command="{Binding NewPlotPingWindowCommand}" />
         <MenuItem Header="New _MultiPing Window" Command="{Binding NewMultiPingWindowCommand}" />

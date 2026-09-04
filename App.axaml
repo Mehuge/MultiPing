@@ -3,7 +3,7 @@
              xmlns:vm="clr-namespace:MultiPing.ViewModels"
              xmlns:views="clr-namespace:MultiPing.Views"
              x:Class="MultiPing.App"
-             RequestedThemeVariant="Default">
+             RequestedThemeVariant="Light">
 
   <Application.DataTemplates>
     <DataTemplate DataType="vm:PlotPingViewModel">
