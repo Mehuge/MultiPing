@@ -4,6 +4,7 @@
         x:Class="MultiPing.Views.MainWindow"
         x:DataType="vm:MonitorViewModelBase"
         Width="1200" Height="800"
+        Icon="/Assets/icon.ico"
         Title="{Binding WindowTitle}">
 
   <DockPanel>
