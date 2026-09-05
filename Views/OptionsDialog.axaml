@@ -31,9 +31,12 @@
       <!-- Traceroute Tab -->
       <TabItem Header="Traceroute">
         <StackPanel Spacing="12" Margin="8,12">
-          <Grid ColumnDefinitions="160,*" RowDefinitions="Auto">
+          <Grid ColumnDefinitions="160,*" RowDefinitions="Auto,Auto">
             <TextBlock Grid.Row="0" Grid.Column="0" Text="Max Hops (TTL):" VerticalAlignment="Center" />
-            <NumericUpDown Grid.Row="0" Grid.Column="1" Value="{Binding MaxHops}" Minimum="1" Maximum="128" Increment="1" Width="140" HorizontalAlignment="Left" />
+            <NumericUpDown Grid.Row="0" Grid.Column="1" Value="{Binding MaxHops}" Minimum="1" Maximum="128" Increment="1" Width="140" HorizontalAlignment="Left" Margin="0,10,0,0" />
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="Look Ahead Limit:" VerticalAlignment="Center" />
+            <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding LookAheadLimit}" Minimum="1" Maximum="5" Increment="1" Width="140" HorizontalAlignment="Left" Margin="0,10,0,0" />
           </Grid>
         </StackPanel>
       </TabItem>

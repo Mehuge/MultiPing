@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.NetworkInformation;
 using System.Threading;
 using System.Threading.Tasks;
+using MultiPing.Models;
 
 namespace MultiPing.Services;
 
@@ -19,15 +20,10 @@ public readonly record struct HopResult(int Ttl, IPAddress? Address, double? Rtt
 /// </summary>
 public sealed class TracerouteService
 {
-    /// <summary>
-    /// Maximum number of hops to look ahead past the last expected destination or last responding router.
-    /// </summary>
-    public const int DefaultLookaheadLimit = 3;
-
     private readonly PingService _ping;
     private readonly ConcurrentDictionary<string, TargetTraceState> _stateByHost = new(StringComparer.OrdinalIgnoreCase);
 
-    public TracerouteService(PingService ping) => _ping = ping;
+    public TracerouteService(PingService ping)  => _ping = ping;
 
     public void ResetState(string? host = null)
     {
@@ -37,7 +33,7 @@ public sealed class TracerouteService
             _stateByHost.TryRemove(host, out _);
     }
 
-    public async Task<IReadOnlyList<HopResult>> RunRoundAsync(string host, int maxHops, int timeoutMs, CancellationToken ct)
+    public async Task<IReadOnlyList<HopResult>> RunRoundAsync(string host, int maxHops, int timeoutMs, int lookAheadLimit, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(host))
             return Array.Empty<HopResult>();
@@ -62,7 +58,7 @@ public sealed class TracerouteService
         {
             // Destination was not reached, but we know routers responded up to lastRespTtl.
             // Look ahead by DefaultLookaheadLimit past last responding hop, bounded by maxHops.
-            initialMaxTtl = Math.Clamp(lastRespTtl + DefaultLookaheadLimit, 1, maxHops);
+            initialMaxTtl = Math.Clamp(lastRespTtl + lookAheadLimit, 1, maxHops);
         }
         else
         {
@@ -110,7 +106,7 @@ public sealed class TracerouteService
         // Destination was NOT reached in the initial batch (route changed, transient loss, or unreachable).
         // Check if we can probe lookahead hops to find the host.
         int currentMaxProbed = initialMaxTtl;
-        int lookaheadEnd = Math.Min(Math.Max(currentMaxProbed, highestRespondingTtl) + DefaultLookaheadLimit, maxHops);
+        int lookaheadEnd = Math.Min(Math.Max(currentMaxProbed, highestRespondingTtl) + lookAheadLimit, maxHops);
 
         if (lookaheadEnd > currentMaxProbed)
         {

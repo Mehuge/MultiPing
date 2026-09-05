@@ -20,6 +20,7 @@ public partial class OptionsViewModel : ObservableObject
     [ObservableProperty] private int _pingIntervalSeconds;
     [ObservableProperty] private int _pingTimeoutMs;
     [ObservableProperty] private int _maxHops;
+    [ObservableProperty] private int _lookAheadLimit;
     [ObservableProperty] private double _sampleWindowMinutes;
     [ObservableProperty] private bool _logByDefault;
     [ObservableProperty] private string _logDirectory = string.Empty;
@@ -37,6 +38,7 @@ public partial class OptionsViewModel : ObservableObject
         _pingIntervalSeconds = Math.Max(1, config.PingIntervalMs / 1000);
         _pingTimeoutMs = config.PingTimeoutMs;
         _maxHops = config.MaxHops;
+        _lookAheadLimit = config.LookAheadLimit;
         _sampleWindowMinutes = config.SampleWindowMinutes;
         _logByDefault = config.LogByDefault;
         _logDirectory = config.LogDirectory ?? string.Empty;
@@ -67,6 +69,7 @@ public partial class OptionsViewModel : ObservableObject
         _config.PingIntervalMs = Math.Max(1, PingIntervalSeconds) * 1000;
         _config.PingTimeoutMs = Math.Max(100, PingTimeoutMs);
         _config.MaxHops = Math.Clamp(MaxHops, 1, 128);
+        _config.LookAheadLimit = Math.Clamp(LookAheadLimit, 1, 5);
         _config.SampleWindowMinutes = Math.Max(1, SampleWindowMinutes);
         _config.LogByDefault = LogByDefault;
         _config.LogDirectory = LogDirectory.Trim();

@@ -23,6 +23,9 @@ public sealed class AppConfig
     /// <summary>Maximum hops to probe in traceroute mode.</summary>
     public int MaxHops { get; set; } = 30;
 
+    /// <summary>Look ahead limit for traceroute optimization.</summary>
+    public int LookAheadLimit { get; set; } = 3;
+
     /// <summary>
     /// Application-wide default for the per-window "Log to disk" toggle. When true, every newly
     /// opened window starts with logging enabled so all traces are logged unless turned off.

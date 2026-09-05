@@ -120,7 +120,7 @@ public partial class MultiPingViewModel : MonitorViewModelBase
 
     private async Task UpdateSelectedTraceAsync(string host, CancellationToken ct)
     {
-        var allHops = await Trace.RunRoundAsync(host, Settings.MaxHops, Settings.PingTimeoutMs, ct);
+        var allHops = await Trace.RunRoundAsync(host, Settings.MaxHops, Settings.PingTimeoutMs, Settings.LookAheadLimit, ct);
         var displayHops = Services.TracerouteService.TrimForDisplay(allHops);
         SelectedTraceHops.Clear();
         foreach (var hop in displayHops)

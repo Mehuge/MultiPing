@@ -47,7 +47,7 @@ public partial class PlotPingViewModel : MonitorViewModelBase
         if (string.IsNullOrEmpty(target)) return;
 
         // Run traceroute round (adaptive TTL with lookahead)
-        var allHops = await Trace.RunRoundAsync(target, Settings.MaxHops, Settings.PingTimeoutMs, ct);
+        var allHops = await Trace.RunRoundAsync(target, Settings.MaxHops, Settings.PingTimeoutMs, Settings.LookAheadLimit, ct);
 
         // Add samples only for hops that were probed this round
         foreach (var hop in allHops)
