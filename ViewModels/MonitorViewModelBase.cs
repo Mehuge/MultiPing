@@ -147,11 +147,40 @@ public abstract partial class MonitorViewModelBase : ObservableObject
     }
 
     [ObservableProperty] private bool _isRunning;
-    [ObservableProperty] private double _sampleWindowMinutes;
+    [ObservableProperty] 
+    [NotifyPropertyChangedFor(nameof(MaxSliderValue))]
+    [NotifyPropertyChangedFor(nameof(ShouldShowSlider))]
+    private double _sampleWindowMinutes;
+
     [ObservableProperty] private double _scrollOffsetMinutes;
+
+    [ObservableProperty] 
+    [NotifyPropertyChangedFor(nameof(MaxSliderValue))]
+    [NotifyPropertyChangedFor(nameof(ShouldShowSlider))]
+    private double _totalMinutes;
+
     [ObservableProperty] private bool _loggingEnabled;
     [ObservableProperty] private bool _logByDefault;
     [ObservableProperty] private int _pingIntervalMs;
+
+    public double MaxSliderValue
+    {
+        get
+        {
+            var value = TotalMinutes - SampleWindowMinutes;
+            Debug.WriteLine($"TotalMinutes: {TotalMinutes}, SampleWindowMinutes: {SampleWindowMinutes}, MaxSliderValue : {value}");
+            return value;
+        }
+    }
+
+    public bool ShouldShowSlider
+    {
+        get
+        {
+            Debug.WriteLine($"TotalMinutes: {TotalMinutes}, SampleWindowMinutes: {SampleWindowMinutes}, ShouldShowSlider: {TotalMinutes > SampleWindowMinutes}");
+            return TotalMinutes > SampleWindowMinutes;
+        }
+    }
 
     /// <summary>Ping interval in seconds (for UI display). Syncs with PingIntervalMs.</summary>
     public int PingIntervalSeconds
@@ -310,6 +339,7 @@ public abstract partial class MonitorViewModelBase : ObservableObject
             if (Log.IsOpen)
                 Log.WriteRound(DateTime.Now, Rows.Select(r => r.ToLogEntry()));
 
+            UpdateTotalMinutes();
             RoundCompleted?.Invoke();
 
             // Schedule next round at fixed wall-clock interval
@@ -327,6 +357,13 @@ public abstract partial class MonitorViewModelBase : ObservableObject
     }
 
     // --- Scrolling of the time-series plots -------------------------------------------------
+
+    /// <summary>Every row's series shares the same oldest timestamp, so any one row's Extent() gives the total span.</summary>
+    private void UpdateTotalMinutes()
+    {
+        (DateTime Oldest, DateTime Newest)? extent = Rows.Count > 0 ? Rows[0].Series.Extent() : null;
+        TotalMinutes = extent is { } e ? Math.Max(0, (DateTime.UtcNow - e.Oldest).TotalMinutes) : 0;
+    }
 
     [RelayCommand]
     private void ScrollLeft() => ScrollOffsetMinutes += SampleWindowMinutes / 4.0;
