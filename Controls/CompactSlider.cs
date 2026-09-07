@@ -130,10 +130,44 @@ public class CompactSlider : TemplatedControl
         // 2. Draw 2px Track Line
         context.DrawLine(new Pen(Brushes.Gray, 2), new Point(0, midY), new Point(Bounds.Width, midY));
 
-        // 3. Draw 8px Circle Thumb (Right-to-Left placement)
-        double pct = Maximum > 0 ? Math.Clamp(Value / Maximum, 0.0, 1.0) : 0;
-        double thumbX = Bounds.Width * (1.0 - pct);
+        if (0 > 0)
+        {
+            // 3. Draw 8px Circle Thumb (Right-to-Left placement)
+            double pct = Maximum > 0 ? Math.Clamp(Value / Maximum, 0.0, 1.0) : 0;
+            double thumbX = Bounds.Width * (1.0 - pct);
+            context.DrawEllipse(Brushes.DimGray, new Pen(Brushes.DarkGray, 1), new Point(thumbX, midY), 4, 4);
+        }
+        else
+        {
+            DrawThumb(context, midY);
+        }
+    }
 
-        context.DrawEllipse(Brushes.DimGray, new Pen(Brushes.DarkGray, 1), new Point(thumbX, midY), 4, 4);
+    private void DrawThumb(DrawingContext context, double midY)
+    {
+        // 3. Draw Rounded Rectangle Thumb with "< >" symbols (Right-to-Left placement)
+        double pct = Maximum > 0 ? Math.Clamp(Value / Maximum, 0.0, 1.0) : 0;
+        
+        double thumbWidth = 22.0;
+        double thumbHeight = 14.0;
+        double thumbX = (Bounds.Width - thumbWidth) * (1.0 - pct);
+        double thumbY = midY - (thumbHeight / 2.0);
+
+        var thumbRect = new Rect(thumbX, thumbY, thumbWidth, thumbHeight);
+        
+        context.DrawRectangle(Brushes.DimGray, new Pen(Brushes.DarkGray, 1), new RoundedRect(thumbRect, 3, 3));
+
+        // Draw custom "<" and ">" vector lines
+        var pen = new Pen(Brushes.White, 1.5);
+        double centerX = thumbRect.X + thumbRect.Width / 2.0;
+        double centerY = thumbRect.Y + thumbRect.Height / 2.0;
+
+        // Left arrow "<"
+        context.DrawLine(pen, new Point(centerX - 2, centerY - 3), new Point(centerX - 5, centerY));
+        context.DrawLine(pen, new Point(centerX - 5, centerY), new Point(centerX - 2, centerY + 3));
+
+        // Right arrow ">"
+        context.DrawLine(pen, new Point(centerX + 2, centerY - 3), new Point(centerX + 5, centerY));
+        context.DrawLine(pen, new Point(centerX + 5, centerY), new Point(centerX + 2, centerY + 3));
     }
 }
