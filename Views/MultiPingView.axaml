@@ -2,18 +2,20 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:MultiPing.ViewModels"
              xmlns:controls="clr-namespace:MultiPing.Controls"
+             xmlns:views="clr-namespace:MultiPing.Views"
              x:Class="MultiPing.Views.MultiPingView"
              x:DataType="vm:MultiPingViewModel"
              x:CompileBindings="False">
 
   <UserControl.Styles>
+    <!-- MRU (Most Recently Used) Flyout Style -->
     <Style Selector="FlyoutPresenter.no-padding">
       <Setter Property="Padding" Value="0" />
       <Setter Property="MinWidth" Value="0" />
     </Style>
   </UserControl.Styles>
 
-  <Grid RowDefinitions="Auto,200,4,*" Margin="6">
+  <Grid RowDefinitions="Auto,200,4,Auto,*" Margin="6">
 
     <!-- Toolbar -->
     <WrapPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center">
@@ -152,8 +154,10 @@
 
     <GridSplitter Grid.Row="2" Background="#40808080" ResizeDirection="Rows" HorizontalAlignment="Stretch" />
 
+    <views:SliderView Grid.Row="3" />
+
     <!-- Bottom: one full-width time-series plot per plot-enabled destination, dividing the panel height evenly -->
-    <Border Grid.Row="3" Background="#F5F5F0" Padding="2">
+    <Border Grid.Row="4" Background="#F5F5F0" Padding="2">
       <ItemsControl ItemsSource="{Binding PlottedRows}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
