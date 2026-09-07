@@ -72,43 +72,37 @@ public sealed class LogService : IDisposable
     private string Header(AppMode mode)
     {
         string first = mode == AppMode.PlotPing ? "Hop" : "Dest";
-        return string.Join("", new[]
-        {
-            Pad("Timestamp", 19),
-            Pad(first, 5),
-            Pad("IP Address", 24),
-            PadR("RTT", 9),
-            PadR("Min", 9),
-            PadR("Max", 9),
-            PadR("Avg", 9),
-            PadR("PL%", 7),
-        });
+        return $"{Truncate("Timestamp", 23),-23}" +
+           $" {Truncate(first, 5),-5}" +
+           $" {Truncate("IP Address", 24),-24}" +
+           $" {"RTT",9}" +
+           $" {"Min",9}" +
+           $" {"Max",9}" +
+           $" {"Avg",9}" +
+           $" {"PL%",7}";
     }
 
     private static string FormatRow(DateTime ts, LogEntry e)
     {
         var s = e.Stats;
-        return string.Join("", new[]
-        {
-            Pad(ts.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture), 19),
-            Pad(e.Index.ToString(CultureInfo.InvariantCulture), 5),
-            Pad(e.IpAddress, 24),
-            PadR(Num(s.Last), 9),
-            PadR(Num(s.Min), 9),
-            PadR(Num(s.Max), 9),
-            PadR(Num(s.Avg), 9),
-            PadR(s.PacketLossPercent.ToString("0.0", CultureInfo.InvariantCulture), 7),
-        });
+        return $"{ts.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture),-23}" +
+           $" {e.Index.ToString(CultureInfo.InvariantCulture),-5}" +
+           $" {PadOrTruncate(e.IpAddress, 24),-24}" +
+           $" {Num(s.Last),9}" +
+           $" {Num(s.Min),9}" +
+           $" {Num(s.Max),9}" +
+           $" {Num(s.Avg),9}" +
+           $" {s.PacketLossPercent.ToString("0.0", CultureInfo.InvariantCulture),7}";
     }
 
     private static string Num(double? v) =>
         v is double d ? d.ToString("0.0", CultureInfo.InvariantCulture) : "-";
 
-    private static string Pad(string s, int width) =>
-        (s.Length >= width ? s[..(width - 1)] + " " : s.PadRight(width));
+    private static string PadOrTruncate(string s, int width) =>
+        s.Length > width ? s[..width] : s;
 
-    private static string PadR(string s, int width) =>
-        (s.Length >= width ? s : s.PadLeft(width - 1) + " ");
-
+    private static string Truncate(string s, int width) =>
+        s.Length > width ? s[..width] : s;
+    
     public void Dispose() => Close();
 }
