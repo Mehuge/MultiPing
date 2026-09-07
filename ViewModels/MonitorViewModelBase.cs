@@ -163,24 +163,9 @@ public abstract partial class MonitorViewModelBase : ObservableObject
     [ObservableProperty] private bool _logByDefault;
     [ObservableProperty] private int _pingIntervalMs;
 
-    public double MaxSliderValue
-    {
-        get
-        {
-            var value = TotalMinutes - SampleWindowMinutes;
-            Debug.WriteLine($"TotalMinutes: {TotalMinutes}, SampleWindowMinutes: {SampleWindowMinutes}, MaxSliderValue : {value}");
-            return value;
-        }
-    }
+    public double MaxSliderValue => TotalMinutes - SampleWindowMinutes;
 
-    public bool ShouldShowSlider
-    {
-        get
-        {
-            Debug.WriteLine($"TotalMinutes: {TotalMinutes}, SampleWindowMinutes: {SampleWindowMinutes}, ShouldShowSlider: {TotalMinutes > SampleWindowMinutes}");
-            return TotalMinutes > SampleWindowMinutes;
-        }
-    }
+    public bool ShouldShowSlider => TotalMinutes > SampleWindowMinutes;
 
     /// <summary>Ping interval in seconds (for UI display). Syncs with PingIntervalMs.</summary>
     public int PingIntervalSeconds
