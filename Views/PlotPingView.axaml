@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:MultiPing.ViewModels"
              xmlns:controls="clr-namespace:MultiPing.Controls"
+             xmlns:views="clr-namespace:MultiPing.Views"
              x:Class="MultiPing.Views.PlotPingView"
              x:DataType="vm:PlotPingViewModel"
              x:CompileBindings="False">
@@ -13,7 +14,7 @@
     </Style>
   </UserControl.Styles>
 
-  <Grid RowDefinitions="Auto,300,4,*" Margin="6">
+  <Grid RowDefinitions="Auto,300,4,Auto,*" Margin="6">
 
     <!-- Toolbar -->
     <WrapPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center">
@@ -143,8 +144,10 @@
 
     <GridSplitter Grid.Row="2" Background="#40808080" ResizeDirection="Rows" HorizontalAlignment="Stretch" />
 
+    <views:SliderView Grid.Row="3" />
+
     <!-- Bottom: one full-width time-series plot per plot-enabled hop, dividing the panel height evenly -->
-    <Border Grid.Row="3" Background="#F5F5F0" Padding="2">
+    <Border Grid.Row="4" Background="#F5F5F0" Padding="2">
       <ItemsControl ItemsSource="{Binding PlottedRows}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
