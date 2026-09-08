@@ -11,6 +11,7 @@
                           IsVisible="{Binding ShouldShowSlider}"
                           Height="12"
                           HorizontalAlignment="Stretch"
-                          Margin="2,2" />
+                          Margin="2,2"
+                          UpdateFrequencyMs="100" />
 
 </UserControl>
