@@ -4,16 +4,12 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Threading;
 using MultiPing.ViewModels;
 using ScottPlot.Avalonia;
 
 namespace MultiPing.Controls;
 
-/// <summary>
-/// A time-series latency plot for a single <see cref="ProbeRowViewModel"/> (X = time, Y = latency in ms).
-/// Redraws when the row receives new samples or when the visible window / scroll offset changes.
-/// Used in an <c>ItemsControl</c> to render one plot per plot-enabled row.
-/// </summary>
 public class LatencyPlotView : UserControl
 {
     public static readonly StyledProperty<ProbeRowViewModel?> RowProperty =
@@ -32,13 +28,15 @@ public class LatencyPlotView : UserControl
     private readonly TextBlock _title = new() { FontSize = 10, FontWeight = FontWeight.SemiBold, Margin = new Thickness(4, 0, 0, 0) };
     private ProbeRowViewModel? _subscribed;
 
+    // Render Throttle Flags
+    private bool _isRenderScheduled;
+
     public LatencyPlotView()
     {
         HorizontalAlignment = HorizontalAlignment.Stretch;
         VerticalAlignment = VerticalAlignment.Stretch;
         Background = Brushes.Transparent;
 
-        // Grid with title row at top, plot filling the rest.
         var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,*") };
         Grid.SetRow(_title, 0);
         Grid.SetRow(_plot, 1);
@@ -48,12 +46,10 @@ public class LatencyPlotView : UserControl
 
         var plot = _plot.Plot;
 
-        // Time-only X axis (no date).
         plot.Axes.DateTimeTicksBottom();
         if (plot.Axes.Bottom.TickGenerator is ScottPlot.TickGenerators.DateTimeAutomatic dt)
             dt.LabelFormatter = d => d.ToString("HH:mm:ss");
 
-        // Condensed labelling: no axis titles, small tick labels, no plot title.
         plot.Axes.Bottom.TickLabelStyle.FontSize = 9;
         plot.Axes.Left.TickLabelStyle.FontSize = 9;
 
@@ -61,7 +57,6 @@ public class LatencyPlotView : UserControl
         plot.Axes.Top.MinimumSize = 0;
         plot.Axes.Top.MaximumSize = 6;
 
-        // Transparent figure so the off-white panel shows through; white data area so the graph stands out.
         plot.FigureBackground.Color = ScottPlot.Colors.Transparent;
         plot.DataBackground.Color = ScottPlot.Colors.White;
         plot.Legend.IsVisible = false;
@@ -108,8 +103,24 @@ public class LatencyPlotView : UserControl
         }
     }
 
+    /// <summary>
+    /// Throttles and queues refresh operations to avoid mid-render state collisions.
+    /// </summary>
     private void Refresh()
     {
+        // If a frame render is already queued for the UI thread, skip creating another dispatch.
+        if (_isRenderScheduled) return;
+
+        _isRenderScheduled = true;
+
+        // Post execution to Avalonia's UI thread at Render priority
+        Dispatcher.UIThread.InvokeAsync(RenderInternal, DispatcherPriority.Render);
+    }
+
+    private void RenderInternal()
+    {
+        _isRenderScheduled = false;
+
         var plot = _plot.Plot;
         plot.Clear();
 
@@ -137,8 +148,6 @@ public class LatencyPlotView : UserControl
                         yMax = ys[i];
                 }
 
-                // Red translucent vertical bands for dropouts, spanning the ping interval width.
-                // Ping interval in OADate units (x-axis for time-series): seconds/86400.
                 double barWidth = PingIntervalMs / 1000.0 / 86400;
                 foreach (double xDropout in dropoutTimes)
                 {
@@ -158,4 +167,3 @@ public class LatencyPlotView : UserControl
         _plot.Refresh();
     }
 }
-
