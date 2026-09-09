@@ -23,6 +23,12 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void OnAboutClick(object? sender, RoutedEventArgs e)
+    {
+        var dialog = new AboutDialog { };
+        await dialog.ShowDialog(this);
+    }
+
     protected override void OnClosing(WindowClosingEventArgs e)
     {
         if (DataContext is MonitorViewModelBase vm)

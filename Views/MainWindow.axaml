@@ -4,7 +4,7 @@
         x:Class="MultiPing.Views.MainWindow"
         x:DataType="vm:MonitorViewModelBase"
         Width="1200" Height="800"
-        Icon="/Assets/icon.ico"
+        Icon="/Assets/logo.ico"
         Title="{Binding WindowTitle}">
 
   <DockPanel>
@@ -23,6 +23,7 @@
       </MenuItem>
       <MenuItem Header="_Options">
         <MenuItem Header="_Options..." Click="OnOptionsClick" />
+        <MenuItem Header="_About..." Click="OnAboutClick" />
       </MenuItem>
     </Menu>
 
