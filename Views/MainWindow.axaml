@@ -23,6 +23,7 @@
       </MenuItem>
       <MenuItem Header="_Options">
         <MenuItem Header="_Options..." Click="OnOptionsClick" />
+        <MenuItem Header="_About..." Click="OnAboutClick" />
       </MenuItem>
     </Menu>
 
