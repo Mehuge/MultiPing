@@ -19,7 +19,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
+    <ApplicationIcon>Assets\logo.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>

@@ -4,7 +4,7 @@
         x:Class="MultiPing.Views.OptionsDialog"
         x:DataType="vm:OptionsViewModel"
         Title="Options"
-        Icon="/Assets/icon.ico"
+        Icon="/Assets/logo.ico"
         Width="480" Height="360"
         CanResize="False"
         WindowStartupLocation="CenterOwner">
