@@ -11,7 +11,7 @@
     <Grid ColumnDefinitions="Auto,*" Margin="0">
         <Image Grid.Column="0" Source="/Assets/logo.png" VerticalAlignment="Top" Width="256" Height="256"/>
         <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto,*,Auto,Auto" Margin="10" VerticalAlignment="Stretch">
-            <TextBlock Grid.Row="0" Text="MultiPing v0.1-alpha" Margin="0"/>
+            <TextBlock Grid.Row="0" x:Name="VersionText" Margin="0" />
             <TextBlock Grid.Row="1" Text="by Mehuge" Margin="0,2,0,0"/>
             <TextBlock Grid.Row="2" FontSize="11" Text="A comprehensive network latency monitoring tool." Margin="0,10,0,0" TextWrapping="Wrap"/>
             <TextBlock Grid.Row="4" FontSize="10" Text="© 2026 Mehuge. All rights reserved." Margin="0,10,0,0" TextWrapping="Wrap"/>
