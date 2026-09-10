@@ -54,3 +54,5 @@ Thumbs.db
 # Avalonia-specific
 bin/
 obj/
+
+.info
