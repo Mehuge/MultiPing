@@ -5,7 +5,11 @@ MultiPing is a Windows desktop application for monitoring network latency and tr
 The application has two monitoring modes:
 
 - **PlotPing** traces one destination and displays latency and packet loss for every discovered hop.
+
+    ![PlotPing](docs/multiping-ss1.png "Traceroute")
 - **MultiPing** monitors several hosts or IP addresses concurrently and can show a traceroute for the selected destination.
+
+    ![MultiPing](docs/multiping-ss2.png "Multiple Destinations")
 
 ## Features
 
