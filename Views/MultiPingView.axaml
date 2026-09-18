@@ -38,8 +38,17 @@
       <Button Content="Add" Command="{Binding AddTargetCommand}" Margin="2,0" />
       <Button Content="Remove" Command="{Binding RemoveSelectedCommand}" Margin="2,0" />
       <Button Content="{Binding RunButtonText}" Command="{Binding ToggleRunCommand}" Width="70" HorizontalContentAlignment="Center" Margin="10,0" />
-      <TextBlock Text="Window (min):" VerticalAlignment="Center" Margin="8,0,2,0" />
-      <NumericUpDown Value="{Binding SampleWindowMinutes}" Minimum="1" Maximum="1440" Increment="5" Width="110" Margin="2,0" />
+      <TextBlock Text="Window:" VerticalAlignment="Center" Margin="8,0,2,0" />
+      <ComboBox ItemsSource="{Binding SampleWindowOptions}"
+                SelectedItem="{Binding SelectedSampleWindow, Mode=TwoWay}"
+                Width="130" Margin="2,0"
+                ToolTip.Tip="Select the amount of history displayed in the charts">
+        <ComboBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:SampleWindowOption">
+            <TextBlock Text="{Binding Label}" />
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
       <TextBlock Text="Interval (s):" VerticalAlignment="Center" Margin="8,0,2,0" />
       <NumericUpDown Value="{Binding PingIntervalSeconds}" Minimum="1" Maximum="60" Increment="1" Width="110" Margin="2,0" />
       <Border Background="{Binding ProbeIndicatorBrush}" CornerRadius="8" Width="35" Padding="6,1" Margin="8,0,8,0" VerticalAlignment="Center"

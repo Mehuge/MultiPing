@@ -47,6 +47,10 @@ public abstract partial class MonitorViewModelBase : ObservableObject
         _logByDefault = settings.LogByDefault;
         _pingIntervalMs = settings.PingIntervalMs;
 
+        SelectedSampleWindow = SampleWindowOption.Presets.FirstOrDefault(option =>
+            Math.Abs(option.Minutes - settings.SampleWindowMinutes) < 0.0001)
+            ?? SampleWindowOption.ForMinutes(settings.SampleWindowMinutes);
+
         foreach (string host in settings.RecentHosts)
             RecentHosts.Add(host);
 
@@ -80,6 +84,39 @@ public abstract partial class MonitorViewModelBase : ObservableObject
     }
 
     public ObservableCollection<ProbeRowViewModel> Rows { get; } = new();
+
+    public ObservableCollection<SampleWindowOption> SampleWindowOptions { get; } = new(SampleWindowOption.Presets);
+
+    [ObservableProperty]
+    private SampleWindowOption? _selectedSampleWindow;
+
+    partial void OnSampleWindowMinutesChanged(double value)
+    {
+        if (SelectedSampleWindow is null || Math.Abs(SelectedSampleWindow.Minutes - value) > 0.0001)
+            SelectedSampleWindow = GetOrCreateSampleWindowOption(value);
+
+        Settings.SampleWindowMinutes = value;
+        ConfigSvc.Save(Settings);
+    }
+
+    partial void OnSelectedSampleWindowChanged(SampleWindowOption? value)
+    {
+        if (value is null) return;
+        if (Math.Abs(SampleWindowMinutes - value.Minutes) > 0.0001)
+            SampleWindowMinutes = value.Minutes;
+    }
+
+    private SampleWindowOption GetOrCreateSampleWindowOption(double minutes)
+    {
+        SampleWindowOption? existing = SampleWindowOptions.FirstOrDefault(option =>
+            Math.Abs(option.Minutes - minutes) < 0.0001);
+        if (existing is not null)
+            return existing;
+
+        existing = SampleWindowOption.ForMinutes(minutes);
+        SampleWindowOptions.Add(existing);
+        return existing;
+    }
 
     /// <summary>
     /// The subset of <see cref="Rows"/> whose plots are enabled, in row order. The bottom panel binds

@@ -1,4 +1,6 @@
 using System;
+using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -22,8 +24,11 @@ public partial class OptionsViewModel : ObservableObject
     [ObservableProperty] private int _maxHops;
     [ObservableProperty] private int _lookAheadLimit;
     [ObservableProperty] private double _sampleWindowMinutes;
+    [ObservableProperty] private SampleWindowOption? _selectedSampleWindow;
     [ObservableProperty] private bool _logByDefault;
     [ObservableProperty] private string _logDirectory = string.Empty;
+
+    public ObservableCollection<SampleWindowOption> SampleWindowOptions { get; } = new(SampleWindowOption.Presets);
 
     public Func<Task<string?>>? PickFolderHandler { get; set; }
     public Action? CloseAction { get; set; }
@@ -39,9 +44,34 @@ public partial class OptionsViewModel : ObservableObject
         _pingTimeoutMs = config.PingTimeoutMs;
         _maxHops = config.MaxHops;
         _lookAheadLimit = config.LookAheadLimit;
-        _sampleWindowMinutes = config.SampleWindowMinutes;
+        _sampleWindowMinutes = Math.Max(1, config.SampleWindowMinutes);
+        _selectedSampleWindow = GetOrCreateSampleWindowOption(_sampleWindowMinutes);
         _logByDefault = config.LogByDefault;
         _logDirectory = config.LogDirectory ?? string.Empty;
+    }
+
+    partial void OnSampleWindowMinutesChanged(double value)
+    {
+        if (SelectedSampleWindow is null || Math.Abs(SelectedSampleWindow.Minutes - value) > 0.0001)
+            SelectedSampleWindow = GetOrCreateSampleWindowOption(value);
+    }
+
+    partial void OnSelectedSampleWindowChanged(SampleWindowOption? value)
+    {
+        if (value is not null)
+            SampleWindowMinutes = value.Minutes;
+    }
+
+    private SampleWindowOption GetOrCreateSampleWindowOption(double minutes)
+    {
+        SampleWindowOption? existing = SampleWindowOptions.FirstOrDefault(option =>
+            Math.Abs(option.Minutes - minutes) < 0.0001);
+        if (existing is not null)
+            return existing;
+
+        existing = SampleWindowOption.ForMinutes(minutes);
+        SampleWindowOptions.Add(existing);
+        return existing;
     }
 
     [RelayCommand]
