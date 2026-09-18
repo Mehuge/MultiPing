@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Avalonia;
 using Avalonia.Controls;
 using MultiPing.ViewModels;
 using ScottPlot;
@@ -16,6 +17,13 @@ namespace MultiPing.Controls;
 public class HopLatencyPlotView : UserControl
 {
     private readonly AvaPlot _plot = new();
+    private IReadOnlyList<ProbeRowViewModel> _rows = Array.Empty<ProbeRowViewModel>();
+
+    public static readonly StyledProperty<double> WindowMinutesProperty =
+        AvaloniaProperty.Register<HopLatencyPlotView, double>(nameof(WindowMinutes), double.PositiveInfinity);
+
+    public static readonly StyledProperty<double> OffsetMinutesProperty =
+        AvaloniaProperty.Register<HopLatencyPlotView, double>(nameof(OffsetMinutes), 0);
 
     public HopLatencyPlotView()
     {
@@ -33,8 +41,35 @@ public class HopLatencyPlotView : UserControl
         _plot.Refresh();
     }
 
+    public double WindowMinutes
+    {
+        get => GetValue(WindowMinutesProperty);
+        set => SetValue(WindowMinutesProperty, value);
+    }
+
+    public double OffsetMinutes
+    {
+        get => GetValue(OffsetMinutesProperty);
+        set => SetValue(OffsetMinutesProperty, value);
+    }
+
     public void Update(IReadOnlyList<ProbeRowViewModel> rows)
     {
+        _rows = rows;
+        Render();
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+
+        if (change.Property == WindowMinutesProperty || change.Property == OffsetMinutesProperty)
+            Render();
+    }
+
+    private void Render()
+    {
+        var rows = _rows;
         var plot = _plot.Plot;
         plot.Clear();
 
@@ -48,15 +83,38 @@ public class HopLatencyPlotView : UserControl
             var maxs = new double[n];
             double yMax = 1;
 
+            DateTime endUtc = DateTime.UtcNow.AddMinutes(-OffsetMinutes);
+            DateTime startUtc = double.IsPositiveInfinity(WindowMinutes)
+                ? DateTime.MinValue
+                : endUtc.AddMinutes(-WindowMinutes);
+
             for (int i = 0; i < n; i++)
             {
-                var s = rows[i].Series.Snapshot();
+                rows[i].Series.GetWindow(startUtc, endUtc, out _, out double[] values);
                 xs[i] = i + 1;
-                last[i] = s.Last ?? double.NaN;
-                avg[i] = s.Avg ?? double.NaN;
-                mins[i] = s.Min ?? double.NaN;
-                maxs[i] = s.Max ?? double.NaN;
-                if (s.Max is double mx && mx > yMax) yMax = mx;
+
+                double? lastValue = null;
+                double? minValue = null;
+                double? maxValue = null;
+                double sum = 0;
+                int received = 0;
+
+                foreach (double value in values)
+                {
+                    lastValue = value;
+                    if (double.IsNaN(value)) continue;
+
+                    minValue = minValue is null || value < minValue.Value ? value : minValue;
+                    maxValue = maxValue is null || value > maxValue.Value ? value : maxValue;
+                    sum += value;
+                    received++;
+                }
+
+                last[i] = lastValue ?? double.NaN;
+                avg[i] = received > 0 ? sum / received : double.NaN;
+                mins[i] = minValue ?? double.NaN;
+                maxs[i] = maxValue ?? double.NaN;
+                if (maxValue is double mx && mx > yMax) yMax = mx;
             }
 
             // Min–Max range as a light-green filled polygon (FillY doesn't render, so use Polygon instead).

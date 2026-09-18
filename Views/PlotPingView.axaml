@@ -147,7 +147,9 @@
       <GridSplitter Grid.Column="1" Background="#40808080" ResizeDirection="Columns" />
 
       <Border Grid.Column="2" BorderBrush="#40808080" BorderThickness="1" Padding="0,10,0,0">
-        <controls:HopLatencyPlotView x:Name="SnapshotPlot" />
+        <controls:HopLatencyPlotView x:Name="SnapshotPlot"
+                                     WindowMinutes="{Binding SampleWindowMinutes}"
+                                     OffsetMinutes="{Binding ScrollOffsetMinutes}" />
       </Border>
     </Grid>
 
