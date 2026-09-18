@@ -155,7 +155,7 @@
       <Border Grid.Column="2" BorderBrush="#40808080" BorderThickness="1">
         <DockPanel>
           <TextBlock DockPanel.Dock="Top" Margin="1" FontSize="12" HorizontalAlignment="Center"
-                     Text="{Binding SelectedRow.Host, StringFormat='Traceroute: {0}'}" />
+                     Text="{Binding SelectedRow.Host, StringFormat='Traceroute: {0}', FallbackValue='Traceroute: No host selected'}" />
           <controls:HopLatencyPlotView x:Name="SnapshotPlot" />
         </DockPanel>
       </Border>
