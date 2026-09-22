@@ -1,3 +1,13 @@
+# Installation
+
+```
+winget install Mehuge.MultiPing
+```
+
+Or download from [releases](https://github.com/Mehuge/MultiPing/releases)
+
+Note, `winget` may lag behind the current release as it can take a while to be approved.
+
 # MultiPing
 
 MultiPing is a Windows desktop application for monitoring network latency and tracing routes. Built with Avalonia, it provides live tables, statistics, and latency plots for both individual network paths and multiple destinations.
