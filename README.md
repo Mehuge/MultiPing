@@ -1,7 +1,7 @@
 # Installation
 
 ```
-winget install Mehuge.MultiPing
+winget install -e --id Mehuge.MultiPing
 ```
 
 Or download from [releases](https://github.com/Mehuge/MultiPing/releases)
