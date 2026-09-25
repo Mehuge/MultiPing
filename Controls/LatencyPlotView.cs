@@ -48,7 +48,7 @@ public class LatencyPlotView : UserControl
 
         plot.Axes.DateTimeTicksBottom();
         if (plot.Axes.Bottom.TickGenerator is ScottPlot.TickGenerators.DateTimeAutomatic dt)
-            dt.LabelFormatter = d => d.ToString("HH:mm:ss");
+            dt.LabelFormatter = d => d.ToLocalTime().ToString("HH:mm:ss");
 
         plot.Axes.Bottom.TickLabelStyle.FontSize = 9;
         plot.Axes.Left.TickLabelStyle.FontSize = 9;
