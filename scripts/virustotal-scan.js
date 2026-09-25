@@ -66,11 +66,51 @@ async function main() {
     process.exit(1);
   }
 
+  const stats = fs.statSync(filePath);
+  const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+  console.log(`File: ${filePath}`);
+  console.log(`Size: ${fileSizeMB} MB (${stats.size} bytes)`);
+
+  // VirusTotal standard endpoint has 32MB limit. For larger files, use the upload_url flow.
+  const LARGE_FILE_THRESHOLD = 32 * 1024 * 1024; // 32MB
+  const isLargeFile = stats.size > LARGE_FILE_THRESHOLD;
+
+  let uploadUrl = 'https://www.virustotal.com/api/v3/files';
+  if (isLargeFile) {
+    console.log('File exceeds 32MB, using large file upload flow...');
+    console.log('Requesting upload URL from VirusTotal...');
+    
+    const urlResponse = await fetch('https://www.virustotal.com/api/v3/files/upload_url', {
+      method: 'GET',
+      headers: { 'x-apikey': apiKey },
+    });
+    
+    const urlText = await urlResponse.text();
+    if (!urlResponse.ok) {
+      console.error(`Failed to get upload URL (${urlResponse.status} ${urlResponse.statusText})`);
+      console.error(urlText);
+      process.exit(1);
+    }
+    
+    let urlPayload;
+    try {
+      urlPayload = JSON.parse(urlText);
+    } catch (error) {
+      console.error('Invalid JSON response for upload URL');
+      console.error(urlText);
+      process.exit(1);
+    }
+    
+    uploadUrl = urlPayload.data;
+    console.log(`Got upload URL: ${uploadUrl}`);
+  }
+
+  console.log('Uploading file to VirusTotal...');
   const fileData = fs.readFileSync(filePath);
   const form = new FormData();
   form.append('file', new Blob([fileData], { type: 'application/octet-stream' }), path.basename(filePath));
 
-  const response = await fetch('https://www.virustotal.com/api/v3/files', {
+  const response = await fetch(uploadUrl, {
     method: 'POST',
     headers: {
       'x-apikey': apiKey,
@@ -96,11 +136,12 @@ async function main() {
   }
 
   const analysisId = payload.data?.id;
-  const analysisUrl = payload.data?.links?.self || 'https://www.virustotal.com/gui/';
+  // Web UI URL for viewing analysis results (not the API endpoint)
+  const webAnalysisUrl = analysisId ? `https://www.virustotal.com/gui/file-analysis/${analysisId}` : 'https://www.virustotal.com/gui/';
 
-  console.log(`Uploaded ${filePath}`);
+  console.log(`Upload complete!`);
   console.log(`Analysis ID: ${analysisId || 'n/a'}`);
-  console.log(`View results: ${analysisUrl}`);
+  console.log(`View results: ${webAnalysisUrl}`);
 }
 
 main().catch((error) => {
