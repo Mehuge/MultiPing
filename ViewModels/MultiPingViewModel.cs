@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
@@ -22,12 +23,33 @@ public partial class MultiPingViewModel : MonitorViewModelBase
     private int _roundCounter;
     private int _nextIndex = 1;
     private CancellationTokenSource? _traceCts;
-    private bool _traceInProgress;
+
+    /// <summary>Number of traceroute rounds currently in flight. Non-zero shows the "pending" indicator.</summary>
+    private int _inflightTraceCount;
+
+    /// <summary>Rows for the selected-destination traceroute, keyed by hop TTL. These persist across
+    /// trace rounds so samples from a slow trace that finishes after a newer one still land in the
+    /// correct chronological position (each trace timestamps its samples by its own start time).</summary>
+    private readonly Dictionary<int, ProbeRowViewModel> _traceRowsByTtl = new();
+
+    /// <summary>The most recently completed trace's hops, used to refresh display labels/addresses.</summary>
+    private IReadOnlyList<HopResult>? _lastAppliedHops;
+
+    /// <summary>The host currently being traced. Changed when the selected destination changes.</summary>
+    private string? _tracedHost;
 
     [ObservableProperty] private string _newTargetInput = string.Empty;
 
     /// <summary>Hops of the traceroute to the currently selected destination (top-right panel).</summary>
     public ObservableCollection<ProbeRowViewModel> SelectedTraceHops { get; } = new();
+
+    /// <summary>Non-empty while at least one traceroute round is in flight, e.g. "pending…".</summary>
+    [ObservableProperty]
+    private string _traceStatus = "";
+
+    /// <summary>True while at least one traceroute round is in flight, for the pending indicator.</summary>
+    [ObservableProperty]
+    private bool _traceInProgress;
 
     public MultiPingViewModel(AppConfig settings, ConfigService configSvc, PingService ping, TracerouteService trace, LogService log)
         : base(settings, configSvc, ping, trace, log)
@@ -89,46 +111,155 @@ public partial class MultiPingViewModel : MonitorViewModelBase
     protected override void OnStopping()
     {
         _traceCts?.Cancel();
+        // Any inflight trace will observe cancellation and bail out, releasing its slot in the
+        // finally block; clear the indicator synchronously so the UI reflects "stopped" immediately.
+        _inflightTraceCount = 0;
+        TraceStatus = "";
+        TraceInProgress = false;
+
+        // A cancelled trace may have left per-hop slots marked inflight with no newer trace to
+        // fill them. Clear the reservation so the cells revert to their last-known RTT.
+        foreach (var row in _traceRowsByTtl.Values)
+            row.ClearInflight();
     }
 
     private void StartSelectedTraceUpdate(string host)
     {
-        if (_traceInProgress) return;
+        // Cancel any still-running trace from a previous interval. A newer trace that started later
+        // is not "better" — it just started later — so we don't discard a slower trace's results;
+        // each trace timestamps its samples by its own start time and merges into the persistent
+        // per-hop rows, so out-of-order completion lands in the correct chronological position.
         _traceCts?.Cancel();
         _traceCts?.Dispose();
         var cts = new CancellationTokenSource();
         _traceCts = cts;
-        _traceInProgress = true;
-        _ = RunSelectedTraceAsync(host, cts.Token);
+
+        // When the traced host changes, the old per-hop rows no longer apply — reset them so the
+        // new trace starts from a clean slate (any inflight trace for the old host is cancelled above).
+        if (!string.Equals(host, _tracedHost, StringComparison.OrdinalIgnoreCase))
+        {
+            _tracedHost = host;
+            _traceRowsByTtl.Clear();
+            _lastAppliedHops = null;
+            SelectedTraceHops.Clear();
+        }
+
+        DateTime startedAt = DateTime.UtcNow;
+
+        // Reserve each hop's slot up front so the result set shows a "pending" entry for every TTL
+        // the trace is about to probe. The plot ignores inflight samples; the cell shows amber until
+        // the result lands. This reserves the position even before the trace completes.
+        ReserveInflightSlots();
+
+        Interlocked.Increment(ref _inflightTraceCount);
+        TraceStatus = "pending…";
+        TraceInProgress = true;
+        _ = RunSelectedTraceAsync(host, startedAt, cts.Token);
     }
 
-    private async Task RunSelectedTraceAsync(string host, CancellationToken ct)
+    private async Task RunSelectedTraceAsync(string host, DateTime startedAt, CancellationToken ct)
     {
         try
         {
-            await UpdateSelectedTraceAsync(host, ct);
-        }
-        catch (OperationCanceledException)
-        {
-            // Superseded by a newer trace or the run was stopped.
+            IReadOnlyList<HopResult>? hops = null;
+            try
+            {
+                hops = await Trace.RunRoundAsync(host, Settings.MaxHops, Settings.PingTimeoutMs, Settings.LookAheadLimit, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                // Superseded by a newer trace or the run was stopped. The slots this trace reserved
+                // stay inflight until a newer trace either fills them or re-reserves them, so a
+                // superseded trace's "pending" cells are naturally replaced by the next trace's.
+                return;
+            }
+            catch (Exception ex)
+            {
+                StatusText = "Trace error: " + ex.Message;
+                return;
+            }
+
+            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => ApplyTraceResults(hops, startedAt));
         }
         finally
         {
-            _traceInProgress = false;
+            // Always release the inflight slot, even on cancellation, so the pending indicator
+            // clears and the next scheduled trace can start.
+            if (Interlocked.Decrement(ref _inflightTraceCount) == 0)
+            {
+                TraceStatus = "";
+                TraceInProgress = false;
+            }
         }
     }
 
-    private async Task UpdateSelectedTraceAsync(string host, CancellationToken ct)
+    /// <summary>Merges one trace round's samples into the persistent per-hop rows. Each hop's sample
+    /// is timestamped by this trace's <paramref name="startedAt"/>, so a slow trace that finishes
+    /// after a newer one still places its sample in the correct chronological slot.</summary>
+    private void ApplyTraceResults(IReadOnlyList<HopResult>? hops, DateTime startedAt)
     {
-        var allHops = await Trace.RunRoundAsync(host, Settings.MaxHops, Settings.PingTimeoutMs, Settings.LookAheadLimit, ct);
-        var displayHops = Services.TracerouteService.TrimForDisplay(allHops);
-        SelectedTraceHops.Clear();
+        if (hops is null) return;
+
+        // Refresh display labels/addresses from the most recently completed trace, but keep every
+        // row that has ever been seen (so a slow trace's samples aren't lost when a newer trace
+        // trims the display set).
+        _lastAppliedHops = hops;
+        var displayHops = Services.TracerouteService.TrimForDisplay(hops);
+
         foreach (var hop in displayHops)
         {
-            string ip = hop.Address?.ToString() ?? "*";
-            var row = new ProbeRowViewModel(hop.Ttl, ip) { DisplayLabel = $"{hop.Ttl}. {ip}", IpAddress = ip };
-            row.AddSample(new PingSample(DateTime.UtcNow, hop.RttMs));
-            SelectedTraceHops.Add(row);
+            ProbeRowViewModel row = GetOrCreateTraceRow(hop.Ttl);
+            if (hop.Address is not null)
+            {
+                string ip = hop.Address.ToString();
+                row.IpAddress = ip;
+                row.DisplayLabel = $"{hop.Ttl}. {ip}";
+            }
+            else if (row.IpAddress == "*" || string.IsNullOrEmpty(row.IpAddress) || row.IpAddress == row.Host)
+            {
+                row.IpAddress = "*";
+                row.DisplayLabel = $"{hop.Ttl}. *";
+            }
+            row.AddSample(new PingSample(startedAt, hop.RttMs));
+            // The result has landed: clear the inflight reservation for this hop so the cell
+            // reflects the actual RTT instead of the pending style.
+            row.ClearInflight();
+        }
+
+        // Rebuild the displayed collection from the persistent rows, in TTL order, so the panel
+        // always reflects the latest known state of every hop that has been probed.
+        RefreshTraceDisplay();
+    }
+
+    private ProbeRowViewModel GetOrCreateTraceRow(int ttl)
+    {
+        if (!_traceRowsByTtl.TryGetValue(ttl, out var row))
+        {
+            row = new ProbeRowViewModel(ttl, host: "*") { DisplayLabel = $"{ttl}. *", IpAddress = "*" };
+            _traceRowsByTtl[ttl] = row;
+        }
+        return row;
+    }
+
+    /// <summary>Reserves every known hop's slot as inflight when a trace starts, so the result set
+    /// shows a "pending" entry for each position before the trace completes. The plot ignores
+    /// inflight samples; only the cell styling reflects the pending state.</summary>
+    private void ReserveInflightSlots()
+    {
+        foreach (var row in _traceRowsByTtl.Values)
+            row.MarkInflight();
+    }
+
+    private void RefreshTraceDisplay()
+    {
+        SelectedTraceHops.Clear();
+        if (_lastAppliedHops is null) return;
+
+        var displayHops = Services.TracerouteService.TrimForDisplay(_lastAppliedHops);
+        foreach (var hop in displayHops)
+        {
+            if (_traceRowsByTtl.TryGetValue(hop.Ttl, out var row))
+                SelectedTraceHops.Add(row);
         }
     }
 

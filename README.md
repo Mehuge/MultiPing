@@ -10,7 +10,7 @@ Note, `winget` may lag behind the current release as it can take a while to be a
 
 # MultiPing
 
-MultiPing is a Windows desktop application for monitoring network latency and tracing routes. Built with Avalonia, it provides live tables, statistics, and latency plots for both individual network paths and multiple destinations.
+MultiPing is a cross-platform desktop application for monitoring network latency and tracing routes. Built with Avalonia, it provides live tables, statistics, and latency plots for both individual network paths and multiple destinations.
 
 The application has two monitoring modes:
 
@@ -179,6 +179,8 @@ dotnet run --project MultiPing.csproj -- --mode plotping
 dotnet run --project MultiPing.csproj -- --mode multiping
 ```
 
+### Windows
+
 Publish a self-contained Windows x64 executable:
 
 ```powershell
@@ -193,6 +195,48 @@ dotnet publish MultiPing.csproj `
 ```
 
 The resulting executable is located at `.\publish\MultiPing.exe`.
+
+### macOS
+
+macOS packages are built on macOS so that the script can generate a native `.icns` icon and, when credentials are available, sign and notarize the bundle. Install the .NET 10 SDK on the Mac, then run:
+
+```bash
+dotnet restore MultiPing.csproj
+npm run build:macos:x64       # Intel Macs
+npm run build:macos:arm64     # Apple Silicon Macs
+```
+
+Create an unsigned development/test `.app` bundle:
+
+```bash
+npm run package:macos:x64
+# or
+npm run package:macos:arm64
+```
+
+The bundle is written to:
+
+```text
+bin/Release/net10.0/osx-x64/publish/MultiPing.app
+bin/Release/net10.0/osx-arm64/publish/MultiPing.app
+```
+
+Open the `.app` bundle directly, or launch it from Terminal:
+
+```bash
+open bin/Release/net10.0/osx-arm64/publish/MultiPing.app
+```
+
+An unsigned development bundle may be blocked by Gatekeeper. To test it without a Developer ID, right-click the `.app`, select **Open**, and confirm the prompt. Signing and notarization are required for normal distribution outside the development machine.
+
+For a Developer ID release, create an Apple notary keychain profile first, then run:
+
+```bash
+CODESIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
+  npm run package:macos:arm64:notarized
+```
+
+The notarized script signs the bundle with the hardened runtime, submits it to Apple's notary service, and staples the ticket. Replace the example RID with `osx-x64` when packaging an Intel release.
 
 ## Technology
 
