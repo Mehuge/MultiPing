@@ -4,8 +4,34 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
-const apiKey = process.env.VT_API_KEY;
+const configPath = path.resolve(__dirname, '..', 'virustotal-config.json');
 const filePath = path.resolve(__dirname, '..', 'bin/Release/net10.0/publish/MultiPing.exe');
+
+function loadApiKey() {
+  if (!fs.existsSync(configPath)) {
+    console.error(`Configuration file not found: ${configPath}`);
+    console.error(`Please copy virustotal-config.json.sample to virustotal-config.json and add your API key.`);
+    process.exit(1);
+  }
+
+  const configContent = fs.readFileSync(configPath, 'utf8');
+  let config;
+  try {
+    config = JSON.parse(configContent);
+  } catch (err) {
+    console.error(`Failed to parse configuration file: ${configPath}`);
+    console.error(err.message);
+    process.exit(1);
+  }
+
+  if (!config.apiKey || config.apiKey.trim() === '' || config.apiKey === 'your-api-key-here') {
+    console.error('API key not configured in virustotal-config.json');
+    console.error('Please edit virustotal-config.json and set your VirusTotal API key.');
+    process.exit(1);
+  }
+
+  return config.apiKey.trim();
+}
 
 function ensureReleaseBuild() {
   if (fs.existsSync(filePath)) return;
@@ -31,12 +57,7 @@ function ensureReleaseBuild() {
 }
 
 async function main() {
-  if (!apiKey) {
-    console.error('VT_API_KEY is not set. Example for PowerShell:');
-    console.error('$env:VT_API_KEY="<your-api-key>"');
-    console.error('Then run: npm run scan');
-    process.exit(1);
-  }
+  const apiKey = loadApiKey();
 
   ensureReleaseBuild();
 
