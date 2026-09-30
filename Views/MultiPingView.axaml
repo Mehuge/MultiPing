@@ -156,6 +156,10 @@
         <DockPanel>
           <TextBlock DockPanel.Dock="Top" Margin="1" FontSize="12" HorizontalAlignment="Center"
                      Text="{Binding SelectedRow.Host, StringFormat='Traceroute: {0}', FallbackValue='Traceroute: No host selected'}" />
+          <TextBlock DockPanel.Dock="Top" Margin="1" FontSize="11" HorizontalAlignment="Center"
+                     Foreground="#FFB000"
+                     Text="{Binding TraceStatus}"
+                     IsVisible="{Binding TraceInProgress}" />
           <controls:HopLatencyPlotView x:Name="SnapshotPlot"
                                        WindowMinutes="{Binding SampleWindowMinutes}"
                                        OffsetMinutes="{Binding ScrollOffsetMinutes}" />

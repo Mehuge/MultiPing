@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using MultiPing.Models;
@@ -46,6 +49,27 @@ public sealed class TracerouteService
 
         TargetTraceState state = _stateByHost.GetOrAdd(host, _ => new TargetTraceState());
         state.TargetIp = targetIp;
+
+        // On macOS the .NET Ping implementation reports the *target* address for every reply,
+        // including ICMP Time Exceeded from intermediate routers, so per-hop addresses collapse
+        // to the destination and the trace degenerates to a single hop. The system traceroute
+        // binary is setuid root and returns correct router addresses, so delegate to it.
+        if (OperatingSystem.IsMacOS())
+        {
+            var nativeHops = await RunNativeTracerouteAsync(targetIp, maxHops, ct).ConfigureAwait(false);
+            if (nativeHops.Count > 0)
+            {
+                int? reachedTtl = null;
+                for (int i = 0; i < nativeHops.Count; i++)
+                {
+                    if (nativeHops[i].Reached) { reachedTtl = nativeHops[i].Ttl; break; }
+                }
+                state.KnownDestinationTtl = reachedTtl;
+                state.LastRespondingTtl = reachedTtl;
+                return nativeHops;
+            }
+            // Fall through to the managed probe path if native tracing failed for any reason.
+        }
 
         // Determine how many hops to probe in the initial batch
         int initialMaxTtl;
@@ -169,6 +193,107 @@ public sealed class TracerouteService
         ProbeResult r = await _ping.ProbeAsync(targetIp, ttl, timeoutMs, ct).ConfigureAwait(false);
         bool reached = r.Reached || (r.Address is not null && r.Address.Equals(targetIp));
         return new HopResult(ttl, r.Address, r.RttMs, r.Status, reached);
+    }
+
+    /// <summary>
+    /// Runs the system <c>traceroute</c> binary on macOS, which is setuid root and returns
+    /// correct router addresses for each hop (the managed Ping path cannot). Output is parsed
+    /// from the <c>-n -q 1 -w timeout</c> form so each line is one hop with a single RTT.
+    /// </summary>
+    private async Task<IReadOnlyList<HopResult>> RunNativeTracerouteAsync(
+        IPAddress targetIp, int maxHops, CancellationToken ct)
+    {
+        // Prefer the resolved IP so the trace is not perturbed by DNS; traceroute re-resolves
+        // internally if given a hostname.
+        string targetArg = targetIp.ToString();
+
+        // Cap the per-probe wait at 1s. Each unresponsive hop costs a full wait period, so a
+        // 2s timeout makes a route with several dropouts take 5-6s; 1s keeps the UI responsive
+        // while still being long enough to distinguish real loss from transient latency.
+        const int waitSeconds = 1;
+        var psi = new ProcessStartInfo
+        {
+            FileName = "/usr/sbin/traceroute",
+            Arguments = $"-n -m {maxHops} -q 1 -w {waitSeconds} {targetArg}",
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+
+        Process process;
+        try
+        {
+            process = Process.Start(psi)!;
+        }
+        catch (Exception)
+        {
+            // Binary missing or not executable: fall back to the managed path.
+            return Array.Empty<HopResult>();
+        }
+
+        try
+        {
+            using (ct.Register(() => { try { process.Kill(); } catch { } }))
+            {
+                string stdout = await process.StandardOutput.ReadToEndAsync(ct).ConfigureAwait(false);
+                _ = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
+
+                await process.WaitForExitAsync(ct).ConfigureAwait(false);
+
+                if (process.ExitCode != 0)
+                {
+                    // Non-zero often means a hop timed out before reaching the destination, which is
+                    // normal for traceroute; only treat fatal errors (no usable lines) as a failure.
+                    if (string.IsNullOrWhiteSpace(stdout))
+                        return Array.Empty<HopResult>();
+                }
+
+                return ParseNativeTraceroute(stdout, targetIp);
+            }
+        }
+        finally
+        {
+            process.Dispose();
+        }
+    }
+
+    // Group 1 = hop number, group 2 = address (IP or "*"), group 3 = single RTT in ms.
+        // The RTT group is optional: a dropout line is "N  *" with no trailing whitespace, so the
+        // whitespace+RTT portion must be optional too or those lines are silently dropped.
+        private static readonly Regex HopLine = new(
+            @"^\s*(\d+)\s+(\S+)(?:\s+(?:(\d+(?:\.\d+)?)\s*ms))?",
+            RegexOptions.Compiled);
+
+    /// <summary>Parses one hop per line from <c>traceroute -n -q 1</c> output.</summary>
+    private static List<HopResult> ParseNativeTraceroute(string stdout, IPAddress? targetIp)
+    {
+        var results = new List<HopResult>();
+        foreach (string rawLine in stdout.Replace("\r", string.Empty).Split('\n'))
+        {
+            string line = rawLine.Trim();
+            if (line.Length == 0) continue;
+
+            Match m = HopLine.Match(line);
+            if (!m.Success) continue;
+
+            if (!int.TryParse(m.Groups[1].Value, out int ttl) || ttl <= 0)
+                continue;
+
+            string addrText = m.Groups[2].Value;
+            IPAddress? addr = null;
+            if (addrText != "*" && IPAddress.TryParse(addrText, out IPAddress? parsed))
+                addr = parsed;
+
+            double? rtt = null;
+            if (m.Groups[3].Success && double.TryParse(m.Groups[3].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out double ms))
+                rtt = ms;
+
+            IPStatus status = addr is null ? IPStatus.TimedOut : IPStatus.Success;
+            bool reached = addr is not null && (targetIp is null || addr.Equals(targetIp));
+
+            results.Add(new HopResult(ttl, addr, rtt, status, reached));
+        }
+        return results;
     }
 
     /// <summary>Trims results for display: up to first destination, or last responding + one dropout, or first one only.</summary>
