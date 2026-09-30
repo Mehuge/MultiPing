@@ -239,7 +239,7 @@ public sealed class TracerouteService
         var psi = new ProcessStartInfo
         {
             FileName = "/usr/sbin/traceroute",
-            Arguments = $"-n -m {maxTtl} -q 1 -w {waitSeconds} {targetArg}",
+            Arguments = $"-I -n -m {maxTtl} -q 1 -w {waitSeconds} {targetArg}",
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
