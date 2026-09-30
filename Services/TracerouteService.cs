@@ -45,14 +45,20 @@ public sealed class TracerouteService
         if (string.IsNullOrWhiteSpace(host))
             return Array.Empty<HopResult>();
 
-        IPAddress? targetIp = await _ping.ResolveAsync(host, ct).ConfigureAwait(false);
-        if (targetIp is null)
-        {
-            return new[] { new HopResult(1, null, null, IPStatus.DestinationHostUnreachable, false) };
-        }
-
         TargetTraceState state = _stateByHost.GetOrAdd(host, _ => new TargetTraceState());
-        state.TargetIp = targetIp;
+
+        // Resolve the hostname to an IP only once per trace session. The IP is cached in
+        // TargetTraceState and reused for all subsequent rounds. Re-resolution only happens
+        // when ResetState is called (i.e., user stops and starts the trace).
+        if (state.TargetIp is null)
+        {
+            IPAddress? targetIp = await _ping.ResolveAsync(host, ct).ConfigureAwait(false);
+            if (targetIp is null)
+            {
+                return new[] { new HopResult(1, null, null, IPStatus.DestinationHostUnreachable, false) };
+            }
+            state.TargetIp = targetIp;
+        }
 
         // On macOS the .NET Ping implementation reports the *target* address for every reply,
         // including ICMP Time Exceeded from intermediate routers, so per-hop addresses collapse
@@ -60,7 +66,7 @@ public sealed class TracerouteService
         // binary is setuid root and returns correct router addresses, so delegate to it.
         if (OperatingSystem.IsMacOS())
         {
-            var nativeHops = await RunNativeTracerouteAsync(targetIp, maxHops, lookAheadLimit, state, ct).ConfigureAwait(false);
+            var nativeHops = await RunNativeTracerouteAsync(state.TargetIp, maxHops, lookAheadLimit, state, ct).ConfigureAwait(false);
             if (nativeHops.Count > 0)
             {
                 int? reachedTtl = null;
@@ -109,7 +115,7 @@ public sealed class TracerouteService
         for (int i = 0; i < initialMaxTtl; i++)
         {
             int ttl = i + 1;
-            initialTasks[i] = ProbeHopAsync(targetIp, ttl, timeoutMs, ct);
+            initialTasks[i] = ProbeHopAsync(state.TargetIp, ttl, timeoutMs, ct);
         }
 
         HopResult[] initialResults = await Task.WhenAll(initialTasks).ConfigureAwait(false);
@@ -153,7 +159,7 @@ public sealed class TracerouteService
             for (int i = 0; i < extraCount; i++)
             {
                 int ttl = currentMaxProbed + 1 + i;
-                lookaheadTasks[i] = ProbeHopAsync(targetIp, ttl, timeoutMs, ct);
+                lookaheadTasks[i] = ProbeHopAsync(state.TargetIp, ttl, timeoutMs, ct);
             }
 
             HopResult[] lookaheadResults = await Task.WhenAll(lookaheadTasks).ConfigureAwait(false);
