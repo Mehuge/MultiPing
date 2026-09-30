@@ -23,6 +23,10 @@ public readonly record struct HopResult(int Ttl, IPAddress? Address, double? Rtt
 /// </summary>
 public sealed class TracerouteService
 {
+    /// <summary>Hops to probe on the very first round, before any state is known. Keeps the
+    /// initial trace cheap; subsequent rounds grow from there toward <c>maxHops</c>.</summary>
+    private const int InitialProbeHops = 10;
+
     private readonly PingService _ping;
     private readonly ConcurrentDictionary<string, TargetTraceState> _stateByHost = new(StringComparer.OrdinalIgnoreCase);
 
@@ -56,16 +60,26 @@ public sealed class TracerouteService
         // binary is setuid root and returns correct router addresses, so delegate to it.
         if (OperatingSystem.IsMacOS())
         {
-            var nativeHops = await RunNativeTracerouteAsync(targetIp, maxHops, ct).ConfigureAwait(false);
+            var nativeHops = await RunNativeTracerouteAsync(targetIp, maxHops, lookAheadLimit, state, ct).ConfigureAwait(false);
             if (nativeHops.Count > 0)
             {
                 int? reachedTtl = null;
+                int highestNativeRespondingTtl = 0;
                 for (int i = 0; i < nativeHops.Count; i++)
                 {
-                    if (nativeHops[i].Reached) { reachedTtl = nativeHops[i].Ttl; break; }
+                    var h = nativeHops[i];
+                    if (h.Reached && reachedTtl is null) reachedTtl = h.Ttl;
+                    if (h.Status != IPStatus.TimedOut && h.Status != IPStatus.Unknown && h.Address is not null)
+                    {
+                        if (h.Ttl > highestNativeRespondingTtl) highestNativeRespondingTtl = h.Ttl;
+                    }
                 }
+
                 state.KnownDestinationTtl = reachedTtl;
-                state.LastRespondingTtl = reachedTtl;
+                state.LastRespondingTtl = reachedTtl is int r ? r : (highestNativeRespondingTtl > 0 ? highestNativeRespondingTtl : state.LastRespondingTtl);
+                // Remember the deepest hop we probed this round so the next round's -m can grow toward
+                // maxHops instead of resetting to 1 and burning 30s on a non-responding destination.
+                state.HighestProbedTtl = nativeHops.Count > 0 ? nativeHops[^1].Ttl : state.HighestProbedTtl;
                 return nativeHops;
             }
             // Fall through to the managed probe path if native tracing failed for any reason.
@@ -201,7 +215,7 @@ public sealed class TracerouteService
     /// from the <c>-n -q 1 -w timeout</c> form so each line is one hop with a single RTT.
     /// </summary>
     private async Task<IReadOnlyList<HopResult>> RunNativeTracerouteAsync(
-        IPAddress targetIp, int maxHops, CancellationToken ct)
+        IPAddress targetIp, int maxHops, int lookAheadLimit, TargetTraceState state, CancellationToken ct)
     {
         // Prefer the resolved IP so the trace is not perturbed by DNS; traceroute re-resolves
         // internally if given a hostname.
@@ -211,10 +225,21 @@ public sealed class TracerouteService
         // 2s timeout makes a route with several dropouts take 5-6s; 1s keeps the UI responsive
         // while still being long enough to distinguish real loss from transient latency.
         const int waitSeconds = 1;
+
+        // Adaptive max-hops: each round re-probes every known hop (so the plot gets a fresh sample
+        // for each) and extends a little further. For a destination that never responds this makes
+        // -m climb toward maxHops over successive rounds instead of burning 30s every round.
+        int maxTtl = state.KnownDestinationTtl is int destTtl
+            ? destTtl
+            : state.HighestProbedTtl is int probedTtl
+                ? Math.Min(probedTtl + lookAheadLimit, maxHops)
+                : Math.Min(InitialProbeHops, maxHops); // first round: probe a small starting batch
+        maxTtl = Math.Max(maxTtl, 1);
+
         var psi = new ProcessStartInfo
         {
             FileName = "/usr/sbin/traceroute",
-            Arguments = $"-n -m {maxHops} -q 1 -w {waitSeconds} {targetArg}",
+            Arguments = $"-n -m {maxTtl} -q 1 -w {waitSeconds} {targetArg}",
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
@@ -332,5 +357,9 @@ public sealed class TracerouteService
         public IPAddress? TargetIp { get; set; }
         public int? KnownDestinationTtl { get; set; }
         public int? LastRespondingTtl { get; set; }
+
+        /// <summary>The highest hop TTL this trace has ever probed. Used to grow <c>-m</c> toward
+        /// <see cref="maxHops"/> over successive rounds for destinations that never respond.</summary>
+        public int? HighestProbedTtl { get; set; }
     }
 }

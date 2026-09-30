@@ -116,6 +116,11 @@ public partial class MultiPingViewModel : MonitorViewModelBase
         _inflightTraceCount = 0;
         TraceStatus = "";
         TraceInProgress = false;
+
+        // A cancelled trace may have left per-hop slots marked inflight with no newer trace to
+        // fill them. Clear the reservation so the cells revert to their last-known RTT.
+        foreach (var row in _traceRowsByTtl.Values)
+            row.ClearInflight();
     }
 
     private void StartSelectedTraceUpdate(string host)
@@ -140,6 +145,12 @@ public partial class MultiPingViewModel : MonitorViewModelBase
         }
 
         DateTime startedAt = DateTime.UtcNow;
+
+        // Reserve each hop's slot up front so the result set shows a "pending" entry for every TTL
+        // the trace is about to probe. The plot ignores inflight samples; the cell shows amber until
+        // the result lands. This reserves the position even before the trace completes.
+        ReserveInflightSlots();
+
         Interlocked.Increment(ref _inflightTraceCount);
         TraceStatus = "pending…";
         TraceInProgress = true;
@@ -157,7 +168,9 @@ public partial class MultiPingViewModel : MonitorViewModelBase
             }
             catch (OperationCanceledException)
             {
-                // Superseded by a newer trace or the run was stopped.
+                // Superseded by a newer trace or the run was stopped. The slots this trace reserved
+                // stay inflight until a newer trace either fills them or re-reserves them, so a
+                // superseded trace's "pending" cells are naturally replaced by the next trace's.
                 return;
             }
             catch (Exception ex)
@@ -208,6 +221,9 @@ public partial class MultiPingViewModel : MonitorViewModelBase
                 row.DisplayLabel = $"{hop.Ttl}. *";
             }
             row.AddSample(new PingSample(startedAt, hop.RttMs));
+            // The result has landed: clear the inflight reservation for this hop so the cell
+            // reflects the actual RTT instead of the pending style.
+            row.ClearInflight();
         }
 
         // Rebuild the displayed collection from the persistent rows, in TTL order, so the panel
@@ -223,6 +239,15 @@ public partial class MultiPingViewModel : MonitorViewModelBase
             _traceRowsByTtl[ttl] = row;
         }
         return row;
+    }
+
+    /// <summary>Reserves every known hop's slot as inflight when a trace starts, so the result set
+    /// shows a "pending" entry for each position before the trace completes. The plot ignores
+    /// inflight samples; only the cell styling reflects the pending state.</summary>
+    private void ReserveInflightSlots()
+    {
+        foreach (var row in _traceRowsByTtl.Values)
+            row.MarkInflight();
     }
 
     private void RefreshTraceDisplay()

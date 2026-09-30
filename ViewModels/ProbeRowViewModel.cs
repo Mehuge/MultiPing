@@ -47,6 +47,11 @@ public partial class ProbeRowViewModel : ObservableObject
     /// <summary>Background for the hop/# cell, colour-coded by the most recent RTT.</summary>
     [ObservableProperty] private IBrush _rttBackground = Brushes.Transparent;
 
+    /// <summary>True while this hop's probe is currently in flight (a trace round is running but has
+    /// not yet reported a result for this TTL). The plot ignores inflight samples; the cell shows
+    /// a "pending" style until the result lands.</summary>
+    [ObservableProperty] private bool _inflight;
+
     private static readonly IBrush LowRttBrush = new SolidColorBrush(Color.Parse("#90EE90"));    // light green: < 50ms
     private static readonly IBrush MidRttBrush = new SolidColorBrush(Color.Parse("#FFA500"));    // orange: < 100ms
     private static readonly IBrush HighRttBrush = new SolidColorBrush(Color.Parse("#FFB6C1"));   // pink: >= 100ms
@@ -63,6 +68,24 @@ public partial class ProbeRowViewModel : ObservableObject
         RefreshStats();
         SeriesUpdated?.Invoke();
     }
+
+    /// <summary>Reserves this hop's slot for an in-flight probe: shows a "pending" style and hides
+    /// the last RTT so the plot ignores the inflight sample until it lands.</summary>
+    public void MarkInflight()
+    {
+        Inflight = true;
+        RttText = "…";
+        RttBackground = PendingBrush;
+    }
+
+    /// <summary>Clears the inflight reservation after the probe result has been applied.</summary>
+    public void ClearInflight()
+    {
+        Inflight = false;
+        RefreshStats();
+    }
+
+    private static readonly IBrush PendingBrush = new SolidColorBrush(Color.Parse("#FFD700")); // amber: pending
 
     public void RefreshStats()
     {
