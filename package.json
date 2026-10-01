@@ -4,20 +4,32 @@
   "description": "MultiPing - Avalonia desktop app for traceroute and multi-IP latency monitoring",
   "scripts": {
     "build:debug": "dotnet build -c Debug --no-restore",
-    "build:release": "dotnet publish MultiPing.csproj -c Release -r win-x64 --no-restore -o bin/Release/net10.0/publish",
-    "scan": "node scripts/virustotal-scan.js",
-    "build:macos:x64": "dotnet publish MultiPing.csproj -c Release -r osx-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o bin/Release/net10.0/osx-x64/publish",
-    "build:macos:arm64": "dotnet publish MultiPing.csproj -c Release -r osx-arm64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o bin/Release/net10.0/osx-arm64/publish",
+    "build:release": "dotnet publish MultiPing.csproj -c Release -r win-x64 --no-restore -o bin/Release/net10.0/win-x64/publish",
+
+    "build:macos:debug": "npm run build:macos:x64:debug && npm run build:macos:arm64:debug",
+    "build:macos:release": "npm run build:macos:x64:release && npm run build:macos:arm64:release",
+
+    "build:macos:x64:debug": "dotnet publish MultiPing.csproj -c Debug -r osx-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o bin/Debug/net10.0/osx-x64",
+    "build:macos:arm64:debug": "dotnet publish MultiPing.csproj -c Debug -r osx-arm64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o bin/Debug/net10.0/osx-arm64",
+
+    "build:macos:x64:release": "dotnet publish MultiPing.csproj -c Release -r osx-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o bin/Release/net10.0/osx-x64/publish",
+    "build:macos:arm64:release": "dotnet publish MultiPing.csproj -c Release -r osx-arm64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o bin/Release/net10.0/osx-arm64/publish",
+
     "package:macos:x64": "bash packaging/macOS/package-app.sh --rid osx-x64",
     "package:macos:arm64": "bash packaging/macOS/package-app.sh --rid osx-arm64",
     "package:macos:x64:notarized": "bash packaging/macOS/package-app.sh --rid osx-x64 --notarize --notary-profile MultiPingNotarization",
     "package:macos:arm64:notarized": "bash packaging/macOS/package-app.sh --rid osx-arm64 --notarize --notary-profile MultiPingNotarization",
+
     "launch:debug": "start bin/Debug/net10.0/win-x64/MultiPing.exe --mode plotping",
-    "launch:release": "start bin/Release/net10.0/win-x64/MultiPing.exe --mode plotping",
+    "launch:release": "start bin/Release/net10.0/win-x64/publish/MultiPing.exe --mode plotping",
     "launch:multiping": "start bin/Debug/net10.0/win-x64/MultiPing.exe --mode multiping",
+    "launch:release:multiping": "start bin/Release/net10.0/win-x64/publish/MultiPing.exe --mode multiping",
+
     "dev": "npm run build:debug && npm run launch:debug",
     "dev:multiping": "npm run build:debug && npm run launch:multiping",
     "dev:plotping": "npm run build:debug && npm run launch:plotping",
+
+    "scan": "node scripts/virustotal-scan.js",
     "clean": "dotnet clean"
   },
   "keywords": [
